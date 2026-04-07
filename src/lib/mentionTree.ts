@@ -84,6 +84,20 @@ export const PRESETS: Record<string, { nodeNames: string[]; edges: [string, stri
       ["config", "deployment"],
     ],
   },
+  "single universal hub": {
+    nodeNames: ["hub", "alpha", "beta", "gamma", "delta", "epsilon"],
+    edges: [
+      ["hub", "alpha"],
+      ["hub", "beta"],
+      ["hub", "gamma"],
+      ["hub", "delta"],
+      ["hub", "epsilon"],
+      ["alpha", "beta"],
+      ["beta", "gamma"],
+      ["delta", "epsilon"],
+      ["alpha", "epsilon"],
+    ],
+  },
 };
 
 export function createNodeMap(): NodeMap {
@@ -413,6 +427,25 @@ export function buildFileTree(nodes: NodeMap, data: ComputeData | null): TreeNod
   function connectsToAll(jId: string, csid: string) {
     return superMembers(csid).every((m) => nodes[jId]?.mentions.has(m) || nodes[m]?.mentions.has(jId));
   }
+  function isUniversalInGroup(candidateId: string, memberIds: string[]) {
+    return memberIds.every((m) => m === candidateId || nodes[candidateId]?.mentions.has(m) || nodes[m]?.mentions.has(candidateId));
+  }
+  function findSingleUniversal(memberIds: string[]) {
+    const unique = [...new Set(memberIds)].filter((id) => nodes[id]);
+    const universals = unique.filter((id) => isUniversalInGroup(id, unique));
+    return universals.length === 1 ? universals[0] : null;
+  }
+  function unnamedGroupFromMembers(memberIds: string[]): TreeItem[] {
+    const members = [...new Set(memberIds)].filter((id) => nodes[id]);
+    if (!members.length) return [];
+    if (members.length === 1) return [mkLeaf(members[0])];
+    const universal = findSingleUniversal(members);
+    if (universal) {
+      const children = members.filter((id) => id !== universal).map(mkLeaf);
+      return [mkDir(nodeName(universal), children)];
+    }
+    return [mkDir("?", members.map(mkLeaf), true)];
+  }
 
   function findCentroid(comp: string[]) {
     if (comp.length === 1) return comp[0];
@@ -505,8 +538,7 @@ export function buildFileTree(nodes: NodeMap, data: ComputeData | null): TreeNod
       const junctionItems = junctionChildren.flatMap((jsid) => packages.get(jsid) || []);
       if (isContent(sid)) {
         const allMems = [...superMembers(sid), ...contentChildren.flatMap((csid) => superMembers(csid))];
-        const contentPkg =
-          allMems.length === 1 ? [mkLeaf(allMems[0])] : allMems.length > 1 ? [mkDir("?", allMems.map(mkLeaf), true)] : [];
+        const contentPkg = unnamedGroupFromMembers(allMems);
         packages.set(sid, [...contentPkg, ...junctionItems]);
       } else {
         const jOrigId = sid.slice(2);
@@ -526,16 +558,16 @@ export function buildFileTree(nodes: NodeMap, data: ComputeData | null): TreeNod
           if (connectsToAll(jOrigId, csid)) {
             packages.set(sid, [mkDir(nodeName(jOrigId), mems.map(mkLeaf)), ...junctionItems]);
           } else {
-            packages.set(sid, [mkLeaf(nodeName(jOrigId)), mkDir("?", mems.map(mkLeaf), true), ...junctionItems]);
+            packages.set(sid, [mkLeaf(nodeName(jOrigId)), ...unnamedGroupFromMembers(mems), ...junctionItems]);
           }
         } else {
           const items: TreeItem[] = [mkLeaf(nodeName(jOrigId))];
           if (allSingleMems.length === 1) items.push(mkLeaf(allSingleMems[0]));
-          else if (allSingleMems.length > 1) items.push(mkDir("?", allSingleMems.map(mkLeaf), true));
+          else if (allSingleMems.length > 1) items.push(...unnamedGroupFromMembers(allSingleMems));
           multis.forEach((csid) => {
             const mems = superMembers(csid);
             if (mems.length === 1) items.push(mkLeaf(mems[0]));
-            else items.push(mkDir("?", mems.map(mkLeaf), true));
+            else items.push(...unnamedGroupFromMembers(mems));
           });
           items.push(...junctionItems);
           packages.set(sid, items);
@@ -567,11 +599,7 @@ export function buildFileTree(nodes: NodeMap, data: ComputeData | null): TreeNod
     else allRootItems.push(mkDir("?", items, true));
   });
 
-  let finalItems = allRootItems;
-  if (finalItems.length === 1 && finalItems[0][0] === "dir" && !finalItems[0][3]) {
-    const [, name, children] = finalItems[0];
-    finalItems = [mkLeaf(name), ...children];
-  }
+  const finalItems = allRootItems;
 
   function toTreeNode(item: TreeItem): TreeNode {
     if (item[0] === "leaf") {

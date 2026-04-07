@@ -1,331 +1,42 @@
 @import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Fraunces:ital,wght@0,300;0,600;1,300&display=swap");
 
-:root {
-  --bg: #0f0f0f;
-  --surface: #161616;
-  --surface2: #1e1e1e;
-  --border: #2a2a2a;
-  --accent: #c8f060;
-  --accent2: #60c8f0;
-  --text: #e8e8e8;
-  --muted: #666;
-  --danger: #f06060;
-  --col-cut: #f0a060;
-  --col-block: #60c8f0;
-  --col-centroid: #c8f060;
-  --col-chain: #a060f0;
-}
-
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
 body {
-  background: var(--bg);
-  color: var(--text);
+  margin: 0;
   font-family: "JetBrains Mono", monospace;
-  font-size: 12px;
 }
 
 #root {
   min-height: 100vh;
-  display: flex;
-  flex-direction: column;
 }
 
-header {
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-header h1 {
-  font-family: "Fraunces", serif;
-  font-size: 20px;
-  font-weight: 600;
-  color: var(--accent);
-}
-
-.subtitle {
-  color: var(--muted);
-  font-size: 10px;
-  font-style: italic;
-}
-
-.score-badge {
-  margin-left: auto;
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  padding: 3px 8px;
-  font-size: 10px;
-  color: var(--accent2);
-}
-
-.score-badge span {
-  font-weight: 700;
-}
-
-.app {
-  display: flex;
-  flex: 1;
-  overflow: hidden;
-  flex-direction: column;
-}
-
-@media (min-width: 900px) {
-  .app {
-    flex-direction: row;
-  }
-}
-
-.editor-col {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  border-bottom: 1px solid var(--border);
-}
-
-@media (min-width: 900px) {
-  .editor-col {
-    width: 260px;
-    min-width: 220px;
-    border-bottom: none;
-    border-right: 1px solid var(--border);
-  }
-}
-
-.viz-col {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.viz-grid {
+.viz-grid-2x2 {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  grid-template-rows: 1fr 1fr;
-  flex: 1;
-  min-height: 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(260px, 1fr));
+  gap: 12px;
+  min-height: calc(100vh - 110px);
 }
 
-@media (max-width: 600px) {
-  .viz-grid {
+.panel-fill {
+  height: 100%;
+}
+
+@media (max-width: 48em) {
+  .viz-grid-2x2 {
     grid-template-columns: 1fr;
-    grid-template-rows: repeat(4, 1fr);
+    grid-template-rows: repeat(4, minmax(240px, auto));
+    min-height: auto;
   }
 }
 
-.panel {
-  display: flex;
-  flex-direction: column;
-  border-right: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
-  min-height: 180px;
-}
-
-.panel:nth-child(2n) {
-  border-right: none;
-}
-
-.panel:nth-child(3),
-.panel:nth-child(4) {
-  border-bottom: none;
-}
-
-.panel-header {
-  padding: 6px 10px;
-  border-bottom: 1px solid var(--border);
-  font-size: 9px;
-  color: var(--muted);
-  letter-spacing: 1.5px;
-  text-transform: uppercase;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background: var(--surface);
-}
-
-.dot {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-}
-
-.panel-body {
-  flex: 1;
-  overflow: hidden;
-  position: relative;
+.panel-fill > * {
+  height: 100%;
 }
 
 canvas {
   display: block;
   width: 100%;
   height: 100%;
-}
-
-.legend {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  padding: 4px 8px;
-  background: var(--surface);
-  border-top: 1px solid var(--border);
-  font-size: 9px;
-}
-
-.leg {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.leg-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-}
-
-.editor-body {
-  flex: 1;
-  overflow-y: auto;
-  padding: 10px;
-}
-
-.row {
-  display: flex;
-  gap: 5px;
-  margin-bottom: 8px;
-}
-
-.row input,
-.row select {
-  flex: 1;
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  color: var(--text);
-  font-family: "JetBrains Mono", monospace;
-  font-size: 11px;
-  padding: 6px 8px;
-  outline: none;
-}
-
-.btn {
-  background: var(--accent);
-  color: #0f0f0f;
-  border: none;
-  font-family: "JetBrains Mono", monospace;
-  font-size: 11px;
-  font-weight: 700;
-  padding: 6px 10px;
-  cursor: pointer;
-}
-
-.btn.sec {
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  color: var(--text);
-  font-weight: 400;
-}
-
-.node-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  margin-bottom: 6px;
-}
-
-.node-card-hd {
-  display: flex;
-  align-items: center;
-  padding: 6px 8px;
-  gap: 6px;
-  cursor: pointer;
-  list-style: none;
-}
-
-.node-name {
-  flex: 1;
-}
-
-.mc {
-  font-size: 9px;
-  color: var(--muted);
-  padding: 1px 5px;
-  border: 1px solid var(--border);
-}
-
-.icon-btn {
-  background: none;
-  border: none;
-  color: var(--muted);
-  cursor: pointer;
-}
-
-.node-card-bd {
-  padding: 6px 8px;
-  border-top: 1px solid var(--border);
-}
-
-.sec-lbl {
-  font-size: 8px;
-  color: var(--muted);
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  margin-bottom: 4px;
-}
-
-.chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 3px;
-  margin-bottom: 5px;
-}
-
-.chip {
-  font-size: 9px;
-  padding: 2px 6px;
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  display: flex;
-  align-items: center;
-  gap: 3px;
-}
-
-.chip button {
-  background: none;
-  border: none;
-  color: var(--muted);
-  cursor: pointer;
-}
-
-.mini-row {
-  display: flex;
-  gap: 3px;
-}
-
-.mini-row select {
-  flex: 1;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  color: var(--text);
-  font-family: "JetBrains Mono", monospace;
-  font-size: 10px;
-  padding: 3px 6px;
-}
-
-.empty,
-.none {
-  color: var(--muted);
-}
-
-.tree-body {
-  overflow-y: auto;
-  padding: 8px;
 }
 
 .tree-row {
@@ -337,32 +48,13 @@ canvas {
 }
 
 .tree-icon {
-  color: var(--muted);
+  color: #666;
   width: 12px;
   text-align: center;
   font-size: 10px;
 }
 
 .tree-children {
-  border-left: 1px solid var(--border);
+  border-left: 1px solid #2a2a2a;
   margin-left: 6px;
-}
-
-.accent {
-  background: var(--accent);
-}
-.accent2 {
-  background: var(--accent2);
-}
-.cut {
-  background: var(--col-cut);
-}
-.block {
-  background: var(--col-block);
-}
-.centroid {
-  background: var(--col-centroid);
-}
-.chain {
-  background: var(--col-chain);
 }

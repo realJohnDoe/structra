@@ -1,18 +1,19 @@
 import { useEffect, useMemo, useRef } from "react";
+import { Box, Group, Paper, Text } from "@mantine/core";
 import { drawGraph, initLayout, stepLayout, type ForceLayout } from "../lib/layout";
 import type { GraphEdge } from "../lib/mentionTree";
 
 type Props = {
   title: string;
-  dotClass: string;
-  legend: { label: string; className: string }[];
+  dotColor: string;
+  legend: { label: string; color: string }[];
   nodeIds: string[];
   edges: GraphEdge[];
   nodeColor: (id: string) => string;
   nodeLabel: (id: string) => string;
 };
 
-export function GraphPanel({ title, dotClass, legend, nodeIds, edges, nodeColor, nodeLabel }: Props) {
+export function GraphPanel({ title, dotColor, legend, nodeIds, edges, nodeColor, nodeLabel }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const layoutRef = useRef<ForceLayout | null>(null);
   const signature = useMemo(() => [...nodeIds].sort().join("|"), [nodeIds]);
@@ -43,22 +44,24 @@ export function GraphPanel({ title, dotClass, legend, nodeIds, edges, nodeColor,
   }, [nodeColor, nodeLabel]);
 
   return (
-    <div className="panel">
-      <div className="panel-header">
-        <div className={`dot ${dotClass}`}></div>
-        {title}
-      </div>
-      <div className="panel-body">
+    <Paper withBorder radius="md" style={{ display: "flex", flexDirection: "column", minHeight: 220, overflow: "hidden" }}>
+      <Group px="sm" py={6} gap={6} style={{ borderBottom: "1px solid var(--mantine-color-dark-4)" }}>
+        <Box w={6} h={6} style={{ borderRadius: "50%", background: dotColor }} />
+        <Text size="xs" c="dimmed" tt="uppercase" fw={700} style={{ letterSpacing: 1.2 }}>
+          {title}
+        </Text>
+      </Group>
+      <Box style={{ flex: 1, minHeight: 180, position: "relative" }}>
         <canvas ref={canvasRef} />
-      </div>
-      <div className="legend">
+      </Box>
+      <Group gap="sm" px="sm" py={6} style={{ borderTop: "1px solid var(--mantine-color-dark-4)", flexWrap: "wrap" }}>
         {legend.map((l) => (
-          <div className="leg" key={l.label}>
-            <div className={`leg-dot ${l.className}`}></div>
-            {l.label}
-          </div>
+          <Group gap={4} key={l.label}>
+            <Box w={8} h={8} style={{ borderRadius: "50%", background: l.color }} />
+            <Text size="xs">{l.label}</Text>
+          </Group>
         ))}
-      </div>
-    </div>
+      </Group>
+    </Paper>
   );
 }

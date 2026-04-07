@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { AppShell, Badge, Box, Grid, Group, Stack, Text, Title } from "@mantine/core";
 import { FileTreePanel } from "./components/FileTreePanel";
 import { GraphPanel } from "./components/GraphPanel";
 import { NodeEditor } from "./components/NodeEditor";
@@ -13,6 +14,16 @@ import {
   type NodeMap,
 } from "./lib/mentionTree";
 
+const COLORS = {
+  bg: "#0f0f0f",
+  cut: "#f0a060",
+  block: "#60c8f0",
+  centroid: "#c8f060",
+  chain: "#a060f0",
+  accent: "#c8f060",
+  accent2: "#60c8f0",
+};
+
 function App() {
   const [nodes, setNodes] = useState<NodeMap>(() => createPreset("star+chain"));
   const data = useMemo(() => computeAll(nodes), [nodes]);
@@ -25,109 +36,136 @@ function App() {
   }, [data, nodes]);
 
   return (
-    <>
-      <header>
-        <h1>MentionTree</h1>
-        <span className="subtitle">block-cut tree sandbox</span>
-        <div className="score-badge">
-          score: <span>{score ?? "—"}</span>
-        </div>
-      </header>
-      <div className="app">
-        <NodeEditor
-          nodes={nodes}
-          onAddNode={(name) =>
-            setNodes((prev) => {
-              const next = cloneNodeMap(prev);
-              const max = Object.keys(next)
-                .map((id) => Number(id.slice(1)))
-                .filter((n) => Number.isFinite(n))
-                .reduce((a, b) => Math.max(a, b), 0);
-              const id = `n${max + 1}`;
-              next[id] = { id, name, mentions: new Set() };
-              return next;
-            })
-          }
-          onRemoveNode={(id) =>
-            setNodes((prev) => {
-              const next = cloneNodeMap(prev);
-              delete next[id];
-              Object.values(next).forEach((n) => n.mentions.delete(id));
-              return next;
-            })
-          }
-          onAddMention={(a, b) =>
-            setNodes((prev) => {
-              if (!a || !b || a === b || !prev[a] || !prev[b]) return prev;
-              const next = cloneNodeMap(prev);
-              next[a].mentions.add(b);
-              next[b].mentions.add(a);
-              return next;
-            })
-          }
-          onRemoveMention={(a, b) =>
-            setNodes((prev) => {
-              if (!prev[a] || !prev[b]) return prev;
-              const next = cloneNodeMap(prev);
-              next[a].mentions.delete(b);
-              next[b].mentions.delete(a);
-              return next;
-            })
-          }
-          onLoadPreset={(name) => {
-            setNodes(createPreset(name));
-          }}
-        />
-        <div className="viz-col">
-          <div className="viz-grid">
-            <GraphPanel
-              title="1 · MENTION GRAPH"
-              dotClass="accent2"
-              legend={[
-                { label: "cut vertex", className: "cut" },
-                { label: "regular node", className: "block" },
-              ]}
-              nodeIds={mentionGraph.ids}
-              edges={mentionGraph.edges}
-              nodeColor={(id) => (data?.cutVertices.has(id) ? "var(--col-cut)" : "var(--col-block)")}
-              nodeLabel={(id) => nodes[id]?.name ?? id}
-            />
-            <GraphPanel
-              title="2 · RAW BC-TREE"
-              dotClass="block"
-              legend={[
-                { label: "cut vertex", className: "cut" },
-                { label: "block node", className: "block" },
-              ]}
-              nodeIds={data?.bcNodes.map((n) => n.id) ?? []}
-              edges={data?.bcEdges ?? []}
-              nodeColor={(id) => (id.startsWith("C:") ? "var(--col-cut)" : "var(--col-block)")}
-              nodeLabel={(id) => data?.bcNodes.find((n) => n.id === id)?.label ?? id}
-            />
-            <GraphPanel
-              title="3 · COLLAPSED + CENTROID"
-              dotClass="chain"
-              legend={[
-                { label: "centroid", className: "centroid" },
-                { label: "junction/cut", className: "cut" },
-                { label: "chain/leaves", className: "chain" },
-                { label: "block", className: "block" },
-              ]}
-              nodeIds={data?.collNodes.map((n) => n.id) ?? []}
-              edges={data?.collEdges ?? []}
-              nodeColor={(id) => {
-                if (data?.centroidSupers.has(id)) return "var(--col-centroid)";
-                if (id.startsWith("CG:")) return "var(--col-chain)";
-                if (id.startsWith("C:")) return "var(--col-cut)";
-                return "var(--col-block)";
+    <AppShell
+      padding="sm"
+      header={{ height: 68 }}
+      styles={{
+        main: { background: COLORS.bg, color: "#e8e8e8", minHeight: "100vh" },
+        header: { background: "#161616", borderColor: "#2a2a2a" },
+      }}
+    >
+      <AppShell.Header>
+        <Group px="md" py="sm" justify="space-between">
+          <Stack gap={0}>
+            <Title order={3} c={COLORS.accent} ff="Fraunces, serif">
+              MentionTree
+            </Title>
+            <Text size="xs" c="dimmed" fs="italic">
+              block-cut tree sandbox
+            </Text>
+          </Stack>
+          <Badge variant="light" color="cyan">
+            score: {score ?? "—"}
+          </Badge>
+        </Group>
+      </AppShell.Header>
+      <AppShell.Main>
+        <Grid gap="sm" align="stretch">
+          <Grid.Col span={{ base: 12, md: 3 }}>
+            <NodeEditor
+              nodes={nodes}
+              onAddNode={(name) =>
+                setNodes((prev) => {
+                  const next = cloneNodeMap(prev);
+                  const max = Object.keys(next)
+                    .map((id) => Number(id.slice(1)))
+                    .filter((n) => Number.isFinite(n))
+                    .reduce((a, b) => Math.max(a, b), 0);
+                  const id = `n${max + 1}`;
+                  next[id] = { id, name, mentions: new Set() };
+                  return next;
+                })
+              }
+              onRemoveNode={(id) =>
+                setNodes((prev) => {
+                  const next = cloneNodeMap(prev);
+                  delete next[id];
+                  Object.values(next).forEach((n) => n.mentions.delete(id));
+                  return next;
+                })
+              }
+              onAddMention={(a, b) =>
+                setNodes((prev) => {
+                  if (!a || !b || a === b || !prev[a] || !prev[b]) return prev;
+                  const next = cloneNodeMap(prev);
+                  next[a].mentions.add(b);
+                  next[b].mentions.add(a);
+                  return next;
+                })
+              }
+              onRemoveMention={(a, b) =>
+                setNodes((prev) => {
+                  if (!prev[a] || !prev[b]) return prev;
+                  const next = cloneNodeMap(prev);
+                  next[a].mentions.delete(b);
+                  next[b].mentions.delete(a);
+                  return next;
+                })
+              }
+              onLoadPreset={(name) => {
+                setNodes(createPreset(name));
               }}
-              nodeLabel={(id) => data?.collNodes.find((n) => n.id === id)?.label ?? id}
             />
-            <FileTreePanel tree={tree} />
-          </div>
-        </div>
-      </div>
-    </>
+          </Grid.Col>
+          <Grid.Col span={{ base: 12, md: 9 }}>
+            <Box className="viz-grid-2x2">
+              <Box className="panel-fill">
+            <GraphPanel
+                  title="1 · MENTION GRAPH"
+                  dotColor={COLORS.accent2}
+                  legend={[
+                    { label: "cut vertex", color: COLORS.cut },
+                    { label: "regular node", color: COLORS.block },
+                  ]}
+                  nodeIds={mentionGraph.ids}
+                  edges={mentionGraph.edges}
+                  nodeColor={(id) => (data?.cutVertices.has(id) ? COLORS.cut : COLORS.block)}
+                  nodeLabel={(id) => nodes[id]?.name ?? id}
+                />
+              </Box>
+              <Box className="panel-fill">
+                <GraphPanel
+                  title="2 · RAW BC-TREE"
+                  dotColor={COLORS.block}
+                  legend={[
+                    { label: "cut vertex", color: COLORS.cut },
+                    { label: "block node", color: COLORS.block },
+                  ]}
+                  nodeIds={data?.bcNodes.map((n) => n.id) ?? []}
+                  edges={data?.bcEdges ?? []}
+                  nodeColor={(id) => (id.startsWith("C:") ? COLORS.cut : COLORS.block)}
+                  nodeLabel={(id) => data?.bcNodes.find((n) => n.id === id)?.label ?? id}
+                />
+              </Box>
+              <Box className="panel-fill">
+                <GraphPanel
+                  title="3 · COLLAPSED + CENTROID"
+                  dotColor={COLORS.chain}
+                  legend={[
+                    { label: "centroid", color: COLORS.centroid },
+                    { label: "junction/cut", color: COLORS.cut },
+                    { label: "chain/leaves", color: COLORS.chain },
+                    { label: "block", color: COLORS.block },
+                  ]}
+                  nodeIds={data?.collNodes.map((n) => n.id) ?? []}
+                  edges={data?.collEdges ?? []}
+                  nodeColor={(id) => {
+                    if (data?.centroidSupers.has(id)) return COLORS.centroid;
+                    if (id.startsWith("CG:")) return COLORS.chain;
+                    if (id.startsWith("C:")) return COLORS.cut;
+                    return COLORS.block;
+                  }}
+                  nodeLabel={(id) => data?.collNodes.find((n) => n.id === id)?.label ?? id}
+                />
+              </Box>
+              <Box className="panel-fill">
+                <FileTreePanel tree={tree} />
+              </Box>
+            </Box>
+          </Grid.Col>
+        </Grid>
+      </AppShell.Main>
+    </AppShell>
   );
 }
 
