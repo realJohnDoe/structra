@@ -106,8 +106,16 @@ function App() {
                 setNodes(createPreset(name));
               }}
               onImportDot={(dotText) => {
+                console.info("[dot-import] received chars:", dotText.length);
                 const imported = createFromDot(dotText);
-                if (imported) setNodes(imported);
+                if (imported) {
+                  console.info("[dot-import] imported nodes:", Object.keys(imported).length);
+                  setNodes(imported);
+                  return;
+                }
+                console.warn("[dot-import] parser returned null");
+                setNodes(createNodeMap());
+                window.alert("No nodes or edges found in this DOT file.");
               }}
             />
           </Grid.Col>
@@ -196,36 +204,83 @@ function createPreset(name: string): NodeMap {
 function createFromDot(dotText: string): NodeMap | null {
   const nodeNames = new Set<string>();
   const edgeSet = new Set<string>();
+  let scannedLines = 0;
+  let skippedLines = 0;
+  const sampleSkipped: string[] = [];
 
   const clean = dotText
     .replace(/\/\*[\s\S]*?\*\//g, "")
-    .replace(/\/\/.*$/gm, "")
-    .replace(/#.*/gm, "");
-  const quotedNode = /"([^"]+)"/g;
-  for (const line of clean.split(/\r?\n/)) {
-    const trimmed = line.trim();
-    if (!trimmed || /^(graph|digraph|strict)\b/i.test(trimmed) || trimmed === "{" || trimmed === "}") continue;
+    .replace(/\/\/.*$/gm, "");
+  const readId = (s: string) => {
+    const t = s.trim();
+    if (!t) return "";
+    if (t.startsWith("\"")) {
+      const end = t.indexOf("\"", 1);
+      return end > 0 ? t.slice(1, end) : "";
+    }
+    const m = t.match(/^[A-Za-z_][A-Za-z0-9_]*/);
+    return m?.[0] ?? "";
+  };
 
-    const edgeMatch = trimmed.match(/("?[^"\s;{}]+"?)\s*(--|->)\s*("?[^"\s;{}]+"?)/);
-    if (edgeMatch) {
-      const a = edgeMatch[1].replace(/^"|"$/g, "");
-      const b = edgeMatch[3].replace(/^"|"$/g, "");
-      if (!a || !b || a === b) continue;
-      nodeNames.add(a);
-      nodeNames.add(b);
-      edgeSet.add([a, b].sort((x, y) => x.localeCompare(y)).join("||"));
+  for (const rawLine of clean.split(/\r?\n/)) {
+    scannedLines++;
+    const trimmed = rawLine.trim();
+    if (!trimmed || trimmed === "{" || trimmed === "}") {
+      skippedLines++;
+      continue;
+    }
+    if (/^(graph|digraph|strict|subgraph)\b/i.test(trimmed)) {
+      skippedLines++;
       continue;
     }
 
-    const localQuoted = [...trimmed.matchAll(quotedNode)].map((m) => m[1]).filter(Boolean);
-    if (localQuoted.length === 1 && !trimmed.includes("--") && !trimmed.includes("->")) {
-      nodeNames.add(localQuoted[0]);
+    const stmt = trimmed.split(";")[0]?.trim() ?? "";
+    if (!stmt) {
+      skippedLines++;
+      continue;
+    }
+    if (/^(node|edge|rankdir|concentrate)\b/i.test(stmt)) {
+      skippedLines++;
       continue;
     }
 
-    const bareNode = trimmed.match(/^([A-Za-z_][A-Za-z0-9_]*)\s*(?:\[.*\])?;?$/);
-    if (bareNode) nodeNames.add(bareNode[1]);
+    if (stmt.includes("->") || stmt.includes("--")) {
+      const op = stmt.includes("->") ? "->" : "--";
+      const left = stmt.split("[")[0].trim();
+      const parts = left.split(op).map((p) => readId(p)).filter(Boolean);
+      if (!parts.length && sampleSkipped.length < 6) sampleSkipped.push(trimmed);
+      for (let i = 0; i < parts.length - 1; i++) {
+        const a = parts[i];
+        const b = parts[i + 1];
+        if (a === b) continue;
+        nodeNames.add(a);
+        nodeNames.add(b);
+        edgeSet.add([a, b].sort((x, y) => x.localeCompare(y)).join("||"));
+      }
+      continue;
+    }
+
+    const head = stmt.split("[")[0].trim();
+    const id = readId(head);
+    if (!id) {
+      skippedLines++;
+      if (sampleSkipped.length < 6) sampleSkipped.push(trimmed);
+      continue;
+    }
+    if (id === "node" || id === "edge" || id === "graph" || id === "digraph" || id === "subgraph" || id === "strict") {
+      skippedLines++;
+      continue;
+    }
+    nodeNames.add(id);
   }
+
+  console.info("[dot-import] parse stats", {
+    scannedLines,
+    skippedLines,
+    nodeCount: nodeNames.size,
+    edgeCount: edgeSet.size,
+    sampleSkipped,
+  });
 
   if (!nodeNames.size) return null;
   const sortedNames = [...nodeNames].sort((a, b) => a.localeCompare(b));

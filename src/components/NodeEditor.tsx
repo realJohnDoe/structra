@@ -2,6 +2,20 @@ import { useRef, useState } from "react";
 import { Accordion, ActionIcon, Badge, Box, Button, Group, Paper, Select, Stack, Text, TextInput } from "@mantine/core";
 import { PRESETS, type NodeMap } from "../lib/mentionTree";
 
+function decodeDotFile(bytes: Uint8Array): string {
+  if (bytes.length >= 2) {
+    const b0 = bytes[0];
+    const b1 = bytes[1];
+    if (b0 === 0xff && b1 === 0xfe) return new TextDecoder("utf-16le").decode(bytes);
+    if (b0 === 0xfe && b1 === 0xff) return new TextDecoder("utf-16be").decode(bytes);
+  }
+  const sample = bytes.subarray(0, Math.min(bytes.length, 512));
+  let zeroCount = 0;
+  for (const b of sample) if (b === 0) zeroCount++;
+  if (sample.length && zeroCount / sample.length > 0.2) return new TextDecoder("utf-16le").decode(bytes);
+  return new TextDecoder("utf-8").decode(bytes);
+}
+
 type Props = {
   nodes: NodeMap;
   onAddNode: (name: string) => void;
@@ -50,7 +64,8 @@ export function NodeEditor({
             const input = e.currentTarget;
             const file = input.files?.[0];
             if (!file) return;
-            const text = await file.text();
+            const buffer = await file.arrayBuffer();
+            const text = decodeDotFile(new Uint8Array(buffer));
             onImportDot(text);
             input.value = "";
           }}
