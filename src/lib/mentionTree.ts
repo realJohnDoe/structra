@@ -148,6 +148,12 @@ export function cloneNodeMap(nodes: NodeMap): NodeMap {
   return out;
 }
 
+function byNodeName(nodes: NodeMap, a: string, b: string): number {
+  const an = nodes[a]?.name ?? a;
+  const bn = nodes[b]?.name ?? b;
+  return an.localeCompare(bn);
+}
+
 function findBlocks(nodes: NodeMap, ids: string[], idSet: Set<string>) {
   const disc: Record<string, number> = {};
   const low: Record<string, number> = {};
@@ -210,7 +216,9 @@ function findBlocks(nodes: NodeMap, ids: string[], idSet: Set<string>) {
 }
 
 export function computeAll(nodes: NodeMap): ComputeData | null {
-  const ids = Object.keys(nodes).filter((id) => nodes[id]);
+  const ids = Object.keys(nodes)
+    .filter((id) => nodes[id])
+    .sort((a, b) => byNodeName(nodes, a, b));
   if (!ids.length) return null;
   const idSet = new Set(ids);
   const { cutVertices, blocks } = findBlocks(nodes, ids, idSet);
@@ -318,7 +326,7 @@ export function computeAll(nodes: NodeMap): ComputeData | null {
     });
   });
 
-  const superIds = [...superNodeSet];
+  const superIds = [...superNodeSet].sort();
   const superComponents: string[][] = [];
   const seen = new Set<string>();
   superIds.forEach((sid) => {
@@ -455,7 +463,8 @@ export function buildFileTree(nodes: NodeMap, data: ComputeData | null): TreeNod
     return [...origToSuper.entries()]
       .filter(([, s]) => s === sid)
       .map(([id]) => id)
-      .filter((id) => nodes[id]);
+      .filter((id) => nodes[id])
+      .sort((a, b) => byNodeName(nodes, a, b));
   }
   function isContent(sid: string) {
     return !sid.startsWith("J:") && !sid.startsWith("C:");
@@ -472,12 +481,12 @@ export function buildFileTree(nodes: NodeMap, data: ComputeData | null): TreeNod
     return universals.length === 1 ? universals[0] : null;
   }
   function unnamedGroupFromMembers(memberIds: string[]): TreeItem[] {
-    const members = [...new Set(memberIds)].filter((id) => nodes[id]);
+    const members = [...new Set(memberIds)].filter((id) => nodes[id]).sort((a, b) => byNodeName(nodes, a, b));
     if (!members.length) return [];
     if (members.length === 1) return [mkLeaf(members[0])];
     const universal = findSingleUniversal(members);
     if (universal) {
-      const children = members.filter((id) => id !== universal).map(mkLeaf);
+      const children = members.filter((id) => id !== universal).sort((a, b) => byNodeName(nodes, a, b)).map(mkLeaf);
       return [mkDir(nodeName(universal), children)];
     }
     return [mkDir("?", members.map(mkLeaf), true)];
@@ -657,6 +666,7 @@ export function buildFileTree(nodes: NodeMap, data: ComputeData | null): TreeNod
   collect(rootFT);
   Object.keys(nodes)
     .filter((id) => nodes[id] && !placed.has(id))
+    .sort((a, b) => byNodeName(nodes, a, b))
     .forEach((id) => rootFT.children.push({ name: nodes[id].name, isDir: false, nodeId: id, children: [] }));
   return rootFT;
 }
@@ -675,7 +685,9 @@ export function computeScore(nodes: NodeMap, tree: TreeNode | null): string | nu
   let total = 0;
   let count = 0;
   const seen = new Set<string>();
-  Object.keys(nodes).forEach((id) => {
+  Object.keys(nodes)
+    .sort((a, b) => byNodeName(nodes, a, b))
+    .forEach((id) => {
     nodes[id].mentions.forEach((mid) => {
       if (!nodes[mid]) return;
       const k = [id, mid].sort().join("|");
@@ -691,7 +703,7 @@ export function computeScore(nodes: NodeMap, tree: TreeNode | null): string | nu
       total += pa.length - common + (pb.length - common);
       count++;
     });
-  });
+    });
   return count ? (total / count).toFixed(2) : "0.00";
 }
 
@@ -706,6 +718,11 @@ export function mentionEdges(nodes: NodeMap, ids: string[]): GraphEdge[] {
       seen.add(k);
       out.push({ from: id, to: mid });
     });
+  });
+  out.sort((a, b) => {
+    const ak = `${nodes[a.from]?.name ?? a.from}|${nodes[a.to]?.name ?? a.to}`;
+    const bk = `${nodes[b.from]?.name ?? b.from}|${nodes[b.to]?.name ?? b.to}`;
+    return ak.localeCompare(bk);
   });
   return out;
 }

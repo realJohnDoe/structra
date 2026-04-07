@@ -27,9 +27,11 @@ function TreeNodeView({ node, depth }: { node: TreeNode; depth: number }) {
       </Box>
       {node.children.length > 0 && (
         <Box className="tree-children">
-          {node.children.map((child, i) => (
+          {[...node.children]
+            .sort((a, b) => (a.name || "").localeCompare(b.name || ""))
+            .map((child, i) => (
             <TreeNodeView key={`${child.name}-${i}`} node={child} depth={depth + 1} />
-          ))}
+            ))}
         </Box>
       )}
     </Box>

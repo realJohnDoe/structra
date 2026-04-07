@@ -105,6 +105,10 @@ function App() {
               onLoadPreset={(name) => {
                 setNodes(createPreset(name));
               }}
+              onImportDot={(dotText) => {
+                const imported = createFromDot(dotText);
+                if (imported) setNodes(imported);
+              }}
             />
           </Grid.Col>
           <Grid.Col span={{ base: 12, md: 9 }}>
@@ -180,6 +184,61 @@ function createPreset(name: string): NodeMap {
   const byName: Record<string, string> = {};
   Object.values(nodes).forEach((n) => (byName[n.name] = n.id));
   p.edges.forEach(([a, b]) => {
+    const na = byName[a];
+    const nb = byName[b];
+    if (!na || !nb) return;
+    nodes[na].mentions.add(nb);
+    nodes[nb].mentions.add(na);
+  });
+  return nodes;
+}
+
+function createFromDot(dotText: string): NodeMap | null {
+  const nodeNames = new Set<string>();
+  const edgeSet = new Set<string>();
+
+  const clean = dotText
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/\/\/.*$/gm, "")
+    .replace(/#.*/gm, "");
+  const quotedNode = /"([^"]+)"/g;
+  for (const line of clean.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed || /^(graph|digraph|strict)\b/i.test(trimmed) || trimmed === "{" || trimmed === "}") continue;
+
+    const edgeMatch = trimmed.match(/("?[^"\s;{}]+"?)\s*(--|->)\s*("?[^"\s;{}]+"?)/);
+    if (edgeMatch) {
+      const a = edgeMatch[1].replace(/^"|"$/g, "");
+      const b = edgeMatch[3].replace(/^"|"$/g, "");
+      if (!a || !b || a === b) continue;
+      nodeNames.add(a);
+      nodeNames.add(b);
+      edgeSet.add([a, b].sort((x, y) => x.localeCompare(y)).join("||"));
+      continue;
+    }
+
+    const localQuoted = [...trimmed.matchAll(quotedNode)].map((m) => m[1]).filter(Boolean);
+    if (localQuoted.length === 1 && !trimmed.includes("--") && !trimmed.includes("->")) {
+      nodeNames.add(localQuoted[0]);
+      continue;
+    }
+
+    const bareNode = trimmed.match(/^([A-Za-z_][A-Za-z0-9_]*)\s*(?:\[.*\])?;?$/);
+    if (bareNode) nodeNames.add(bareNode[1]);
+  }
+
+  if (!nodeNames.size) return null;
+  const sortedNames = [...nodeNames].sort((a, b) => a.localeCompare(b));
+  const nodes: NodeMap = {};
+  const byName: Record<string, string> = {};
+  sortedNames.forEach((name, i) => {
+    const id = `n${i + 1}`;
+    nodes[id] = { id, name, mentions: new Set() };
+    byName[name] = id;
+  });
+
+  edgeSet.forEach((k) => {
+    const [a, b] = k.split("||");
     const na = byName[a];
     const nb = byName[b];
     if (!na || !nb) return;

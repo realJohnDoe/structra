@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Accordion, ActionIcon, Badge, Box, Button, Group, Paper, Select, Stack, Text, TextInput } from "@mantine/core";
 import { PRESETS, type NodeMap } from "../lib/mentionTree";
 
@@ -9,10 +9,24 @@ type Props = {
   onAddMention: (id: string, targetId: string) => void;
   onRemoveMention: (id: string, targetId: string) => void;
   onLoadPreset: (name: string) => void;
+  onImportDot?: (dotText: string) => void;
 };
 
-export function NodeEditor({ nodes, onAddNode, onRemoveNode, onAddMention, onRemoveMention, onLoadPreset }: Props) {
-  const ids = Object.keys(nodes);
+function byNodeName(nodes: NodeMap, a: string, b: string) {
+  return (nodes[a]?.name ?? a).localeCompare(nodes[b]?.name ?? b);
+}
+
+export function NodeEditor({
+  nodes,
+  onAddNode,
+  onRemoveNode,
+  onAddMention,
+  onRemoveMention,
+  onLoadPreset,
+  onImportDot = () => {},
+}: Props) {
+  const ids = Object.keys(nodes).sort((a, b) => byNodeName(nodes, a, b));
+  const fileInputRef = useRef<HTMLInputElement>(null);
   return (
     <Paper withBorder radius="md" p="sm" style={{ height: "100%", overflow: "auto" }}>
       <Stack gap="xs">
@@ -21,8 +35,25 @@ export function NodeEditor({ nodes, onAddNode, onRemoveNode, onAddMention, onRem
         </Text>
         <Select
           placeholder="load preset..."
-          data={Object.keys(PRESETS).map((p) => ({ value: p, label: p }))}
+          data={Object.keys(PRESETS).sort((a, b) => a.localeCompare(b)).map((p) => ({ value: p, label: p }))}
           onChange={(value) => value && onLoadPreset(value)}
+        />
+        <Button variant="light" onClick={() => fileInputRef.current?.click()}>
+          import .dot
+        </Button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".dot,.gv,text/plain"
+          style={{ display: "none" }}
+          onChange={async (e) => {
+            const input = e.currentTarget;
+            const file = input.files?.[0];
+            if (!file) return;
+            const text = await file.text();
+            onImportDot(text);
+            input.value = "";
+          }}
         />
         <AddNodeRow onAddNode={onAddNode} />
         <Box>
@@ -88,8 +119,10 @@ function NodeCard({
   onRemoveMention: (id: string, targetId: string) => void;
 }) {
   const n = nodes[id];
-  const mentions = [...n.mentions].filter((m) => nodes[m]);
-  const others = Object.keys(nodes).filter((o) => o !== id && !n.mentions.has(o));
+  const mentions = [...n.mentions].filter((m) => nodes[m]).sort((a, b) => byNodeName(nodes, a, b));
+  const others = Object.keys(nodes)
+    .filter((o) => o !== id && !n.mentions.has(o))
+    .sort((a, b) => byNodeName(nodes, a, b));
   const [selected, setSelected] = useState("");
   return (
     <Accordion variant="separated" radius="sm" mb={6}>
@@ -102,6 +135,7 @@ function NodeCard({
                 {n.mentions.size}
               </Badge>
               <ActionIcon
+                component="span"
                 color="red"
                 variant="subtle"
                 onClick={(e) => {
