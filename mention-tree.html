@@ -1,0 +1,1147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MentionTree</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Fraunces:ital,wght@0,300;0,600;1,300&display=swap');
+:root {
+  --bg:#0f0f0f; --surface:#161616; --surface2:#1e1e1e; --border:#2a2a2a;
+  --accent:#c8f060; --accent2:#60c8f0; --text:#e8e8e8; --muted:#666; --danger:#f06060;
+  --col-cut:#f0a060; --col-block:#60c8f0; --col-centroid:#c8f060; --col-chain:#a060f0;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px;min-height:100vh;display:flex;flex-direction:column;}
+header{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;}
+header h1{font-family:'Fraunces',serif;font-size:20px;font-weight:600;color:var(--accent);}
+.subtitle{color:var(--muted);font-size:10px;font-style:italic;}
+.score-badge{margin-left:auto;background:var(--surface2);border:1px solid var(--border);padding:3px 8px;font-size:10px;color:var(--accent2);}
+.score-badge span{font-weight:700;}
+
+/* ── Layout ── */
+.app{display:flex;flex:1;overflow:hidden;flex-direction:column;}
+@media(min-width:900px){.app{flex-direction:row;}}
+
+/* Left column: node editor */
+.editor-col{width:100%;display:flex;flex-direction:column;border-bottom:1px solid var(--border);}
+@media(min-width:900px){.editor-col{width:260px;min-width:220px;border-bottom:none;border-right:1px solid var(--border);}}
+
+/* Right column: viz panels */
+.viz-col{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.viz-grid{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;flex:1;min-height:0;}
+@media(max-width:600px){.viz-grid{grid-template-columns:1fr;grid-template-rows:repeat(4,1fr);}}
+
+.panel{display:flex;flex-direction:column;border-right:1px solid var(--border);border-bottom:1px solid var(--border);min-height:180px;}
+.panel:nth-child(2n){border-right:none;}
+.panel:nth-child(3),.panel:nth-child(4){border-bottom:none;}
+.panel-header{padding:6px 10px;border-bottom:1px solid var(--border);font-size:9px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;display:flex;align-items:center;gap:6px;background:var(--surface);flex-shrink:0;}
+.panel-header .dot{width:5px;height:5px;border-radius:50%;}
+.panel-body{flex:1;overflow:hidden;position:relative;}
+canvas{display:block;width:100%;height:100%;}
+
+/* legend */
+.legend{display:flex;gap:10px;flex-wrap:wrap;padding:4px 8px;background:var(--surface);border-top:1px solid var(--border);font-size:9px;flex-shrink:0;}
+.leg{display:flex;align-items:center;gap:4px;}
+.leg-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+
+/* Editor */
+.panel-header.editor{background:var(--surface);}
+.editor-body{flex:1;overflow-y:auto;padding:10px;}
+.row{display:flex;gap:5px;margin-bottom:8px;}
+.row input,.row select{flex:1;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:11px;padding:6px 8px;outline:none;}
+.row input:focus,.row select:focus{border-color:var(--accent);}
+.row input::placeholder{color:var(--muted);}
+.btn{background:var(--accent);color:#0f0f0f;border:none;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;padding:6px 10px;cursor:pointer;white-space:nowrap;}
+.btn:hover{opacity:.85;}
+.btn.sec{background:var(--surface2);border:1px solid var(--border);color:var(--text);font-weight:400;}
+.node-card{background:var(--surface);border:1px solid var(--border);margin-bottom:6px;}
+.node-card-hd{display:flex;align-items:center;padding:6px 8px;gap:6px;cursor:pointer;user-select:none;}
+.node-card-hd:hover{background:var(--surface2);}
+.node-name{flex:1;font-size:11px;font-weight:500;}
+.mc{font-size:9px;color:var(--muted);padding:1px 5px;border:1px solid var(--border);}
+.icon-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:1px 3px;line-height:1;}
+.icon-btn:hover{color:var(--danger);}
+.node-card-bd{padding:6px 8px;border-top:1px solid var(--border);display:none;}
+.node-card.open .node-card-bd{display:block;}
+.sec-lbl{font-size:8px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;}
+.chips{display:flex;flex-wrap:wrap;gap:3px;margin-bottom:5px;}
+.chip{font-size:9px;padding:2px 6px;background:var(--surface2);border:1px solid var(--border);display:flex;align-items:center;gap:3px;}
+.chip button{background:none;border:none;color:var(--muted);cursor:pointer;font-size:10px;padding:0;line-height:1;}
+.chip button:hover{color:var(--danger);}
+.mini-row{display:flex;gap:3px;}
+.mini-row select{flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:10px;padding:3px 6px;outline:none;}
+.empty{color:var(--muted);font-size:10px;font-style:italic;padding:16px 0;text-align:center;}
+
+::-webkit-scrollbar{width:3px;}
+::-webkit-scrollbar-track{background:var(--bg);}
+::-webkit-scrollbar-thumb{background:var(--border);}
+</style>
+</head>
+<body>
+<header>
+  <h1>MentionTree</h1>
+  <span class="subtitle">block-cut tree sandbox</span>
+  <div class="score-badge">score: <span id="score-val">—</span></div>
+</header>
+<div class="app">
+
+  <!-- ── Editor ── -->
+  <div class="editor-col">
+    <div class="panel-header editor"><div class="dot" style="background:var(--accent)"></div>NODES</div>
+    <div class="editor-body">
+      <div class="row">
+        <select id="preset-select" onchange="loadPreset(this.value)">
+          <option value="">load preset…</option>
+          <option value="star+chain">star + chain</option>
+          <option value="two stars">two stars</option>
+          <option value="triangle+chain">triangle + chain</option>
+          <option value="auth+plotting">auth + plotting</option>
+          <option value="biconn+chains">biconnected + chains</option>
+          <option value="complex">complex (chain+clique+chain)</option>
+        </select>
+      </div>
+      <div class="row">
+        <input type="text" id="new-node-input" placeholder="node name…"/>
+        <button class="btn" onclick="addNode()">+</button>
+      </div>
+      <div id="nodes-container"></div>
+    </div>
+  </div>
+
+  <!-- ── Viz panels ── -->
+  <div class="viz-col">
+    <div class="viz-grid">
+
+      <!-- Panel 1: mention graph -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="dot" style="background:var(--accent2)"></div>1 · MENTION GRAPH
+        </div>
+        <div class="panel-body"><canvas id="c1"></canvas></div>
+        <div class="legend">
+          <div class="leg"><div class="leg-dot" style="background:var(--col-cut)"></div>cut vertex</div>
+          <div class="leg"><div class="leg-dot" style="background:var(--col-block)"></div>regular node</div>
+        </div>
+      </div>
+
+      <!-- Panel 2: raw BC-tree -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="dot" style="background:var(--col-block)"></div>2 · RAW BC-TREE
+        </div>
+        <div class="panel-body"><canvas id="c2"></canvas></div>
+        <div class="legend">
+          <div class="leg"><div class="leg-dot" style="background:var(--col-cut)"></div>cut vertex</div>
+          <div class="leg"><div class="leg-dot" style="background:var(--col-block)"></div>block node</div>
+        </div>
+      </div>
+
+      <!-- Panel 3: collapsed BC-tree with centroid -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="dot" style="background:var(--col-chain)"></div>3 · COLLAPSED + CENTROID
+        </div>
+        <div class="panel-body"><canvas id="c3"></canvas></div>
+        <div class="legend">
+          <div class="leg"><div class="leg-dot" style="background:var(--col-centroid)"></div>centroid</div>
+          <div class="leg"><div class="leg-dot" style="background:var(--col-cut)"></div>junction/cut</div>
+          <div class="leg"><div class="leg-dot" style="background:var(--col-chain)"></div>chain/leaves</div>
+          <div class="leg"><div class="leg-dot" style="background:var(--col-block)"></div>block</div>
+        </div>
+      </div>
+
+      <!-- Panel 4: file tree -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="dot" style="background:var(--accent)"></div>4 · FILE TREE
+        </div>
+        <div class="panel-body" id="tree-body" style="overflow-y:auto;padding:8px;">
+          <div class="empty">Add nodes to see the tree.</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════════
+let nodes = {};
+let nextId = 1;
+
+function addNode(name) {
+  if (!name) {
+    const inp = document.getElementById('new-node-input');
+    name = inp.value.trim(); if (!name) return; inp.value = '';
+  }
+  const id = 'n' + nextId++;
+  nodes[id] = { id, name, mentions: new Set() };
+  renderNodes(); render();
+}
+function removeNode(id) {
+  delete nodes[id];
+  Object.values(nodes).forEach(n => n.mentions.delete(id));
+  renderNodes(); render();
+}
+function addMention(id, tid) {
+  if (!tid || tid === id) return;
+  nodes[id].mentions.add(tid); nodes[tid].mentions.add(id);
+  renderNodes(); render();
+}
+function removeMention(id, tid) {
+  nodes[id].mentions.delete(tid); nodes[tid].mentions.delete(id);
+  renderNodes(); render();
+}
+function toggleCard(id) { document.getElementById('card-'+id).classList.toggle('open'); }
+function addMentionFromSelect(id) {
+  const s = document.getElementById('sel-'+id); addMention(id, s.value); s.value='';
+}
+
+function renderNodes() {
+  const c = document.getElementById('nodes-container');
+  const ids = Object.keys(nodes);
+  if (!ids.length) { c.innerHTML='<div class="empty">No nodes yet.</div>'; return; }
+  c.innerHTML = ids.map(id => {
+    const n = nodes[id];
+    const mHtml = [...n.mentions].filter(m=>nodes[m]).map(m=>
+      `<span class="chip">${nodes[m].name}<button onclick="removeMention('${id}','${m}')">×</button></span>`
+    ).join('');
+    const others = ids.filter(o=>o!==id&&!n.mentions.has(o));
+    const opts = others.map(o=>`<option value="${o}">${nodes[o].name}</option>`).join('');
+    return `<div class="node-card" id="card-${id}">
+      <div class="node-card-hd" onclick="toggleCard('${id}')">
+        <span class="node-name">${n.name}</span>
+        <span class="mc">${n.mentions.size}</span>
+        <button class="icon-btn" onclick="event.stopPropagation();removeNode('${id}')">✕</button>
+      </div>
+      <div class="node-card-bd">
+        <div class="sec-lbl">mentions</div>
+        <div class="chips">${mHtml||'<span style="color:var(--muted);font-size:9px">none</span>'}</div>
+        ${others.length?`<div class="mini-row">
+          <select id="sel-${id}"><option value="">add…</option>${opts}</select>
+          <button class="btn sec" onclick="addMentionFromSelect('${id}')">+</button>
+        </div>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// GRAPH ALGORITHMS
+// ═══════════════════════════════════════════════════════════════════
+
+function findBlocks(ids, idSet) {
+  const disc={}, low={}, par={};
+  const cuts=new Set(), edgeStack=[], blocks=[];
+  let timer=0;
+  ids.forEach(id=>{disc[id]=-1;});
+  function popBlock(u,v){
+    const comp=new Set();
+    while(edgeStack.length){const[a,b]=edgeStack[edgeStack.length-1];edgeStack.pop();comp.add(a);comp.add(b);if(a===u&&b===v)break;}
+    if(comp.size)blocks.push([...comp]);
+  }
+  function dfs(u){
+    disc[u]=low[u]=timer++;let cc=0;
+    for(const v of [...nodes[u].mentions].filter(v=>idSet.has(v))){
+      if(disc[v]===-1){cc++;par[v]=u;edgeStack.push([u,v]);dfs(v);low[u]=Math.min(low[u],low[v]);
+        const isR=par[u]===undefined;
+        if((isR&&cc>1)||(!isR&&low[v]>=disc[u])){cuts.add(u);popBlock(u,v);}
+      }else if(v!==par[u]&&disc[v]<disc[u]){low[u]=Math.min(low[u],disc[v]);edgeStack.push([u,v]);}
+    }
+  }
+  for(const id of ids){
+    if(disc[id]===-1){par[id]=undefined;dfs(id);
+      if(edgeStack.length){const comp=new Set();while(edgeStack.length){const[a,b]=edgeStack.pop();comp.add(a);comp.add(b);}if(comp.size)blocks.push([...comp]);}
+    }
+  }
+  return {cutVertices:cuts, blocks};
+}
+
+function isChainBlock(blockIds) {
+  const bs=new Set(blockIds);
+  if(!blockIds.every(id=>[...nodes[id].mentions].filter(m=>bs.has(m)).length<=2))return false;
+  const seen=new Set();let ec=0;
+  blockIds.forEach(u=>[...nodes[u].mentions].filter(m=>bs.has(m)).forEach(v=>{
+    const k=[u,v].sort().join('|');if(!seen.has(k)){seen.add(k);ec++;}
+  }));
+  return ec===blockIds.length-1;
+}
+
+function classifyBlocks(cutVertices, blocks, idSet) {
+  const ids=[...idSet];
+  const chainBlocks=new Set();
+  blocks.forEach((b,i)=>{if(isChainBlock(b))chainBlocks.add(i);});
+
+  const junctions=new Set();
+  cutVertices.forEach(id=>{
+    const deg=[...nodes[id].mentions].filter(m=>idSet.has(m)).length;
+    const myB=blocks.map((b,i)=>b.includes(id)?i:-1).filter(i=>i>=0);
+    if(deg>2||myB.some(i=>!chainBlocks.has(i)))junctions.add(id);
+  });
+  let changed=true;
+  while(changed){changed=false;ids.forEach(id=>{
+    if(junctions.has(id))return;
+    if([...nodes[id].mentions].filter(m=>idSet.has(m)&&junctions.has(m)).length>=2){junctions.add(id);changed=true;}
+  });}
+
+  const inChain=new Set();
+  blocks.forEach((b,i)=>{if(chainBlocks.has(i))b.forEach(id=>{if(!junctions.has(id))inChain.add(id);});});
+
+  const chainAdj=new Map();
+  inChain.forEach(id=>chainAdj.set(id,[]));
+  blocks.forEach((b,i)=>{
+    if(!chainBlocks.has(i))return;
+    b.forEach(u=>{if(!inChain.has(u))return;
+      b.forEach(v=>{if(v!==u&&inChain.has(v)&&nodes[u].mentions.has(v)&&!chainAdj.get(u).includes(v))chainAdj.get(u).push(v);});
+    });
+  });
+
+  const chainGroups=[];const visited=new Set();
+  inChain.forEach(id=>{
+    if(visited.has(id))return;
+    const group=[],queue=[id];visited.add(id);
+    while(queue.length){const u=queue.shift();group.push(u);
+      (chainAdj.get(u)||[]).filter(v=>!visited.has(v)).forEach(v=>{visited.add(v);queue.push(v);});}
+    chainGroups.push(group);
+  });
+
+  return {junctions,inChain,chainGroups,chainBlocks};
+}
+
+function connectedComponents(ids) {
+  const idSet=new Set(ids),visited=new Set(),result=[];
+  ids.forEach(id=>{
+    if(visited.has(id))return;
+    const comp=[],queue=[id];visited.add(id);
+    while(queue.length){const u=queue.shift();comp.push(u);
+      [...nodes[u].mentions].filter(v=>idSet.has(v)&&!visited.has(v)).forEach(v=>{visited.add(v);queue.push(v);});}
+    result.push(comp);
+  });
+  return result;
+}
+
+function findCentroid(ids, idSet) {
+  if(ids.length===1)return ids[0];
+  const par={},order=[],root=ids[0],visited=new Set([root]),queue=[root];
+  par[root]=null;
+  while(queue.length){const u=queue.shift();order.push(u);
+    [...nodes[u].mentions].filter(v=>idSet.has(v)&&!visited.has(v)).forEach(v=>{visited.add(v);par[v]=u;queue.push(v);});}
+  const sz={};ids.forEach(id=>{sz[id]=1;});
+  for(let i=order.length-1;i>=0;i--){const u=order[i];if(par[u]!==null)sz[par[u]]=(sz[par[u]]||1)+sz[u];}
+  const total=ids.length;let centroid=ids[0],bestMax=Infinity;
+  ids.forEach(id=>{
+    const childSizes=[...nodes[id].mentions].filter(v=>idSet.has(v)&&par[v]===id).map(v=>sz[v]);
+    const mx=Math.max(...childSizes,total-sz[id],(childSizes.length?0:-Infinity));
+    if(mx<bestMax||(mx===bestMax&&id<centroid)){bestMax=mx;centroid=id;}
+  });
+  return centroid;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// COMPUTE ALL INTERMEDIATE STRUCTURES
+// Four explicit steps following the plan:
+//  1. Raw BC-tree (panel 2)
+//  2. Identify chain groups in the BC-tree (runs of >=3 C-nodes or leaf non-cut nodes)
+//  3. Find centroid treating each chain group / block as one unit (panel 3)
+//  4. Build file tree using step-4 absorption rule (panel 4)
+// ═══════════════════════════════════════════════════════════════════
+function computeAll() {
+  const ids = Object.keys(nodes).filter(id => nodes[id]);
+  if (!ids.length) return null;
+  const idSet = new Set(ids);
+
+  // ── Step 1: Tarjan BC decomposition ──────────────────────────────
+  const { cutVertices, blocks } = findBlocks(ids, idSet);
+
+  // ── Build raw BC-tree for Panel 2 ────────────────────────────────
+  // Nodes: one C-node per cut vertex, one B-node per block.
+  // B-node label = {all members} so it maps back to the original graph.
+  const bcNodes = [];
+  const bcEdges = [];
+  cutVertices.forEach(id => bcNodes.push({
+    id: 'C:'+id, type: 'cut',
+    label: nodes[id]?.name || id, origId: id
+  }));
+  blocks.forEach((b, i) => {
+    const members = b.map(id => nodes[id]?.name || id).sort().join(',');
+    bcNodes.push({ id:'B:'+i, type:'block', label:'{'+members+'}', members:b });
+    b.forEach(id => { if (cutVertices.has(id)) bcEdges.push({from:'C:'+id, to:'B:'+i}); });
+  });
+
+  // ── Step 2: Identify chain groups in the BC-tree ─────────────────
+  // A "BC-chain" is a path in the BC-tree of the form:
+  //   [junction/leaf] — C — B — C — B — C — [junction/leaf]
+  // where every intermediate C-node and B-node is a bridge (size-2 block).
+  // We collapse such paths into chain groups when they contain >= 3 C-nodes.
+  //
+  // Implementation: work in the BC-tree.
+  // Degree of a BC-tree node = number of BC-tree edges attached to it.
+  // A C-node is "chain-internal" if:
+  //   - it is not a cut vertex with degree >= 3 in the BC-tree (not a junction)
+  //   - all its adjacent blocks are bridge blocks (size 2)
+  // Collect maximal runs of chain-internal C-nodes; each run of length >= 3 → chain group.
+  // Also include the leaf non-cut nodes that hang off those bridge blocks.
+
+  // BC-tree degree per node
+  const bcDeg = new Map();
+  bcNodes.forEach(n => bcDeg.set(n.id, 0));
+  bcEdges.forEach(({from, to}) => {
+    bcDeg.set(from, (bcDeg.get(from)||0)+1);
+    bcDeg.set(to,   (bcDeg.get(to)||0)+1);
+  });
+
+  // A block is a bridge block iff it has exactly 2 members (both must be cut vertices
+  // or one cut + one leaf)
+  const bridgeBlockIds = new Set(
+    blocks.map((_,i)=>'B:'+i).filter((_,i) => blocks[i].length === 2)
+  );
+
+  // A C-node is chain-eligible if:
+  //   1. ALL its adjacent blocks are bridge blocks (size 2), AND
+  //   2. Its BC-tree degree is <= 2  (degree > 2 means it's a hub/junction)
+  function isCNodeChainEligible(cid) {
+    const adjBlocks = bcEdges
+      .filter(e => e.from === cid || e.to === cid)
+      .map(e => e.from === cid ? e.to : e.from);
+    const allBridge = adjBlocks.every(bid => bridgeBlockIds.has(bid));
+    const bcDegree = adjBlocks.length;
+    return allBridge && bcDegree <= 2;
+  }
+
+  const chainEligibleC = new Set(
+    bcNodes.filter(n => n.type === 'cut' && isCNodeChainEligible(n.id)).map(n => n.id)
+  );
+
+  // Build adjacency among chain-eligible C-nodes (through bridge blocks)
+  const cAdj = new Map(); // cid → [cid]
+  chainEligibleC.forEach(cid => cAdj.set(cid, []));
+  blocks.forEach((b, i) => {
+    if (!bridgeBlockIds.has('B:'+i)) return;
+    const cutsInBlock = b.filter(id => cutVertices.has(id));
+    if (cutsInBlock.length === 2) {
+      const [a, bb] = cutsInBlock;
+      const ca = 'C:'+a, cb = 'C:'+bb;
+      if (chainEligibleC.has(ca) && chainEligibleC.has(cb)) {
+        if (!cAdj.get(ca).includes(cb)) cAdj.get(ca).push(cb);
+        if (!cAdj.get(cb).includes(ca)) cAdj.get(cb).push(ca);
+      }
+    }
+  });
+
+  // BFS to find maximal runs; keep only runs of >= 3 C-nodes
+  const visitedC = new Set();
+  // bcChainGroups: each = { cNodes: [origId], leafOrigIds: [origId] }
+  const bcChainGroups = [];
+  const collapsedCIds = new Set(); // BC-tree C-node ids that are collapsed
+
+  chainEligibleC.forEach(cid => {
+    if (visitedC.has(cid)) return;
+    const run = [], queue = [cid]; visitedC.add(cid);
+    while (queue.length) {
+      const u = queue.shift(); run.push(u);
+      (cAdj.get(u)||[]).filter(v => !visitedC.has(v)).forEach(v => { visitedC.add(v); queue.push(v); });
+    }
+    if (run.length < 3) return; // don't collapse short runs
+    // collect original node ids for the C-nodes in this run
+    const cOrigIds = run.map(cid => cid.slice(2)); // strip 'C:'
+    // collect leaf non-cut original nodes from bridge blocks touching this run
+    const leafOrigIds = [];
+    const runCOrigSet = new Set(cOrigIds);
+    blocks.forEach((b, i) => {
+      if (!bridgeBlockIds.has('B:'+i)) return;
+      const cutsInBlock = b.filter(id => cutVertices.has(id));
+      // a bridge block where at least one cut is in this run
+      if (!cutsInBlock.some(id => runCOrigSet.has(id))) return;
+      b.filter(id => !cutVertices.has(id)).forEach(id => leafOrigIds.push(id));
+    });
+    bcChainGroups.push({ cNodes: cOrigIds, leafOrigIds, runCIds: run });
+    run.forEach(cid => collapsedCIds.add(cid));
+  });
+
+  // ── Step 3: Find centroid of the collapsed BC-tree ────────────────
+  // Collapsed BC-tree nodes:
+  //   - each chain group → 1 node
+  //   - each non-bridge block → 1 node
+  //   - each non-collapsed cut vertex → 1 node
+  // We find the centroid of this collapsed tree (treating it as a tree graph).
+
+  // Assign a "super-node id" to every original node
+  const origToSuper = new Map();
+
+  // Chain groups — map BOTH cut vertices and leaf nodes to the CG super-node
+  // (cut vertices in the chain belong to the group, but won't show as separate nodes)
+  bcChainGroups.forEach((cg, i) => {
+    const sid = 'CG:'+i;
+    cg.cNodes.forEach(id => origToSuper.set(id, sid));
+    cg.leafOrigIds.forEach(id => origToSuper.set(id, sid));
+  });
+  // Non-bridge blocks: non-cut members map to the block's super-node
+  blocks.forEach((b, i) => {
+    const bid = 'B:'+i;
+    if (bridgeBlockIds.has(bid)) {
+      // bridge block: non-cut member (if any) → nearest chain group or its own super
+      b.filter(id => !cutVertices.has(id)).forEach(id => {
+        if (!origToSuper.has(id)) origToSuper.set(id, bid);
+      });
+    } else {
+      // proper block: non-cut members → block super-node
+      b.filter(id => !cutVertices.has(id)).forEach(id => origToSuper.set(id, bid));
+    }
+  });
+  // Remaining cut vertices (not in any chain group)
+  cutVertices.forEach(id => {
+    if (!origToSuper.has(id)) origToSuper.set(id, 'C:'+id);
+  });
+  // Singletons (non-cut, not in any block — shouldn't happen but just in case)
+  ids.forEach(id => { if (!origToSuper.has(id)) origToSuper.set(id, 'S:'+id); });
+
+  // Build super-node list and adjacency
+  const superNodeSet = new Set(origToSuper.values());
+  const superAdj = new Map();
+  superNodeSet.forEach(sid => superAdj.set(sid, new Set()));
+  ids.forEach(id => {
+    const sa = origToSuper.get(id);
+    nodes[id].mentions.forEach(mid => {
+      if (!nodes[mid]) return;
+      const sb = origToSuper.get(mid);
+      if (sa && sb && sa !== sb) { superAdj.get(sa).add(sb); superAdj.get(sb).add(sa); }
+    });
+  });
+
+  // Find centroid of each connected component of the super-node graph,
+  // then promote to nearest junction if the raw centroid is not a junction.
+  // For disconnected graphs, each component gets its own centroid.
+
+  function superGraphComponents(ids, adj) {
+    const visited = new Set(), comps = [];
+    ids.forEach(sid => {
+      if (visited.has(sid)) return;
+      const comp = [], q = [sid]; visited.add(sid);
+      while (q.length) {
+        const u = q.shift(); comp.push(u);
+        [...(adj.get(u)||[])].filter(v => !visited.has(v))
+          .forEach(v => { visited.add(v); q.push(v); });
+      }
+      comps.push(comp);
+    });
+    return comps;
+  }
+
+  function componentCentroid(compIds, adj) {
+    if (compIds.length === 1) return compIds[0];
+    const spar = {}, sorder = [], sroot = compIds[0];
+    const svis = new Set([sroot]); const sq = [sroot]; spar[sroot] = null;
+    while (sq.length) {
+      const u = sq.shift(); sorder.push(u);
+      [...(adj.get(u)||[])].filter(v => !svis.has(v))
+        .forEach(v => { svis.add(v); spar[v]=u; sq.push(v); });
+    }
+    const ssz = {}; compIds.forEach(id => { ssz[id] = 1; });
+    for (let i = sorder.length-1; i >= 0; i--) {
+      const u = sorder[i];
+      if (spar[u] !== null) ssz[spar[u]] = (ssz[spar[u]]||1) + ssz[u];
+    }
+    const total = compIds.length;
+    let best = Infinity, raw = compIds[0];
+    compIds.forEach(id => {
+      const childMax = Math.max(
+        ...[...(adj.get(id)||[])].filter(v => spar[v]===id).map(v => ssz[v]),
+        total - ssz[id], 0
+      );
+      if (childMax < best) { best = childMax; raw = id; }
+    });
+    // Promote to nearest junction via BFS
+    if (raw.startsWith('J:')) return raw;
+    const bfsQ = [raw]; const bfsV = new Set([raw]);
+    while (bfsQ.length) {
+      const u = bfsQ.shift();
+      if (u.startsWith('J:')) return u;
+      [...(adj.get(u)||[])].filter(v => !bfsV.has(v))
+        .forEach(v => { bfsV.add(v); bfsQ.push(v); });
+    }
+    return raw; // no junction found, keep raw
+  }
+
+  const superIds = [...superNodeSet];
+  const superComponents = superGraphComponents(superIds, superAdj);
+  // Compute centroid for EACH component, store as a Set for panel 3 coloring
+  const centroidSupers = new Set();
+  superComponents.forEach(comp => {
+    const c = componentCentroid(comp, superAdj);
+    if (c) centroidSupers.add(c);
+  });
+  // Primary centroid = centroid of largest component
+  const largestComp = superComponents.reduce((a,b) => b.length>a.length?b:a, superComponents[0]||[]);
+  const centroidSuper = largestComp.length ? componentCentroid(largestComp, superAdj) : null;
+
+  // (superComponents already computed above, reused in buildFileTree)
+
+  // Build Panel 3 nodes/edges from super-nodes
+  const collNodes = [], collEdges = [];
+  const collEdgeSet = new Set();
+
+  // Meta info per super-node
+  function superLabel(sid) {
+    if (sid.startsWith('CG:')) {
+      const i = parseInt(sid.slice(3));
+      const cg = bcChainGroups[i];
+      // Show ALL members: both chain cut vertices and leaf nodes
+      const all = [...cg.cNodes, ...cg.leafOrigIds].map(id => nodes[id]?.name||id).sort();
+      return '['+all.join(',')+']';
+    }
+    if (sid.startsWith('B:')) {
+      const i = parseInt(sid.slice(2));
+      const b = blocks[i];
+      // Show only non-cut members (cut vertices appear as their own nodes)
+      const nonCuts = b.filter(id => !cutVertices.has(id)).map(id => nodes[id]?.name||id).sort();
+      return nonCuts.length ? '{'+nonCuts.join(',')+'}' : '[block]';
+    }
+    if (sid.startsWith('C:')) {
+      return nodes[sid.slice(2)]?.name || sid.slice(2);
+    }
+    if (sid.startsWith('S:')) {
+      return nodes[sid.slice(2)]?.name || sid.slice(2);
+    }
+    if (sid.startsWith('J:')) {
+      return nodes[sid.slice(2)]?.name || sid.slice(2);
+    }
+    return sid;
+  }
+  function superType(sid) {
+    if (sid === centroidSuper) return 'centroid';
+    if (sid.startsWith('CG:')) return 'chain';
+    if (sid.startsWith('B:'))  return 'block';
+    if (sid.startsWith('C:'))  return 'cut';
+    return 'node';
+  }
+
+  superIds.forEach(sid => {
+    collNodes.push({ id:sid, type:superType(sid), label:superLabel(sid) });
+  });
+  superIds.forEach(sa => {
+    superAdj.get(sa).forEach(sb => {
+      const k = [sa,sb].sort().join('||');
+      if (!collEdgeSet.has(k)) { collEdgeSet.add(k); collEdges.push({from:sa, to:sb}); }
+    });
+  });
+
+  return {
+    ids, idSet, cutVertices, blocks, bridgeBlockIds,
+    bcNodes, bcEdges,
+    bcChainGroups, origToSuper, superAdj, centroidSuper, centroidSupers, superComponents,
+    collNodes, collEdges
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// FILE TREE — Step 4  (bottom-up)
+//
+// Process super-node tree leaves-first. Each node returns a package
+// of items for its parent. Parent decides structure after seeing all
+// children's packages — no premature placement, no duplicates.
+//
+// Centroid promotion: only S: (pure leaf) nodes promoted to nearest J:.
+// C:, B:, CG: nodes stay as centroid — they are structural.
+// ═══════════════════════════════════════════════════════════════════
+function buildFileTree(data) {
+  if (!data) return null;
+  const { ids, origToSuper, superAdj, superComponents,
+          bcChainGroups, blocks, cutVertices } = data;
+  if (!ids.length) return null;
+
+  const mkLeaf = id => ['leaf', id];
+  const mkDir  = (name, children, unnamed=false) => ['dir', name, children, unnamed];
+  const nodeName = id => nodes[id]?.name || id;
+
+  function superMembers(sid) {
+    return [...origToSuper.entries()].filter(([,s])=>s===sid)
+      .map(([id])=>id).filter(id=>nodes[id]);
+  }
+  function isContent(sid) { return !sid.startsWith('J:') && !sid.startsWith('C:'); }
+  function connectsToAll(jId, csid) {
+    return superMembers(csid).every(m =>
+      nodes[jId]?.mentions.has(m) || nodes[m]?.mentions.has(jId));
+  }
+
+  function findCentroid(comp) {
+    if (comp.length===1) return comp[0];
+    const inComp=new Set(comp);
+    const spar={},sorder=[],sroot=comp[0],svis=new Set([sroot]),sq=[sroot];
+    spar[sroot]=null;
+    while(sq.length){ const u=sq.shift(); sorder.push(u);
+      [...(superAdj.get(u)||[])].filter(v=>!svis.has(v)&&inComp.has(v))
+        .forEach(v=>{svis.add(v);spar[v]=u;sq.push(v);}); }
+    const ssz={}; comp.forEach(id=>{ssz[id]=1;});
+    for(let i=sorder.length-1;i>=0;i--){ const u=sorder[i];
+      if(spar[u]!==null) ssz[spar[u]]=(ssz[spar[u]]||1)+ssz[u]; }
+    const total=comp.length; let best=Infinity, c=comp[0];
+    comp.forEach(id=>{
+      const cm=Math.max(
+        ...[...(superAdj.get(id)||[])].filter(v=>spar[v]===id&&inComp.has(v)).map(v=>ssz[v]),
+        total-ssz[id], 0);
+      if(cm<best){best=cm;c=id;}
+    });
+    // Only promote pure leaf singletons (S:) to nearest junction.
+    // C:, B:, CG: are structural and stay as centroid.
+    if (c.startsWith('S:')) {
+      const bq=[c], bv=new Set([c]);
+      while(bq.length){ const u=bq.shift();
+        if(u.startsWith('J:')){c=u;break;}
+        [...(superAdj.get(u)||[])].filter(v=>!bv.has(v)&&inComp.has(v))
+          .forEach(v=>{bv.add(v);bq.push(v);}); }
+    }
+    return c;
+  }
+
+  function buildCompItems(comp) {
+    const inComp=new Set(comp);
+    const centroid=findCentroid(comp);
+
+    // BFS to establish parent-child relationships in the super-tree
+    const bfsChildren=new Map(); comp.forEach(v=>bfsChildren.set(v,[]));
+    const bfsOrder=[]; const vis=new Set([centroid]); const q=[centroid];
+    while(q.length){ const u=q.shift(); bfsOrder.push(u);
+      [...(superAdj.get(u)||[])].filter(v=>!vis.has(v)&&inComp.has(v))
+        .forEach(v=>{vis.add(v);bfsChildren.get(u).push(v);q.push(v);}); }
+
+    const packages=new Map();
+
+    // Process in reverse BFS order (leaves first)
+    for(let i=bfsOrder.length-1; i>=0; i--) {
+      const sid=bfsOrder[i];
+      const children=bfsChildren.get(sid)||[];
+      const contentChildren=children.filter(v=>isContent(v));
+      const junctionChildren=children.filter(v=>!isContent(v));
+
+      // Collect items contributed by junction children
+      const junctionItems=junctionChildren.flatMap(jsid=>packages.get(jsid)||[]);
+
+      if (isContent(sid)) {
+        // Content node: gather own members + any content children members into one group
+        const allMems=[...superMembers(sid),
+          ...contentChildren.flatMap(csid=>superMembers(csid))];
+        const contentPkg = allMems.length===1
+          ? [mkLeaf(allMems[0])]
+          : allMems.length>1 ? [mkDir('?', allMems.map(mkLeaf), true)] : [];
+        packages.set(sid, [...contentPkg, ...junctionItems]);
+
+      } else {
+        // Junction node
+        const jOrigId=sid.slice(2);
+        const singles=contentChildren.filter(v=>superMembers(v).length===1);
+        const multis= contentChildren.filter(v=>superMembers(v).length>1);
+        const allSingleMems=singles.flatMap(v=>superMembers(v));
+        // hasBoth: junction has BOTH content children AND junction children -> Case C
+        const hasBoth=contentChildren.length>0 && junctionChildren.length>0;
+
+        if (contentChildren.length===0) {
+          // No content: junction is flat node + junction subtrees
+          packages.set(sid, [mkLeaf(nodeName(jOrigId)), ...junctionItems]);
+
+        } else if (!hasBoth && multis.length===0 && singles.length===1) {
+          // One single leaf: R3 dissolves dir, keep flat
+          packages.set(sid, [mkLeaf(nodeName(jOrigId)), mkLeaf(allSingleMems[0]), ...junctionItems]);
+
+        } else if (!hasBoth && multis.length===0 && singles.length>1) {
+          // R1b: all single leaves, no junction siblings -> named dir
+          packages.set(sid, [mkDir(nodeName(jOrigId), allSingleMems.map(mkLeaf)), ...junctionItems]);
+
+        } else if (!hasBoth && multis.length===1 && singles.length===0) {
+          // R1: one multi-group, no junction siblings
+          const csid=multis[0]; const mems=superMembers(csid);
+          if (connectsToAll(jOrigId, csid)) {
+            packages.set(sid, [mkDir(nodeName(jOrigId), mems.map(mkLeaf)), ...junctionItems]);
+          } else {
+            packages.set(sid, [mkLeaf(nodeName(jOrigId)), mkDir('?', mems.map(mkLeaf), true), ...junctionItems]);
+          }
+
+        } else {
+          // Case C: mixed or double-role -> junction flat, groups separate
+          const items=[mkLeaf(nodeName(jOrigId))];
+          if (allSingleMems.length===1) items.push(mkLeaf(allSingleMems[0]));
+          else if (allSingleMems.length>1) items.push(mkDir('?', allSingleMems.map(mkLeaf), true));
+          multis.forEach(csid=>{
+            const mems=superMembers(csid);
+            if(mems.length===1) items.push(mkLeaf(mems[0]));
+            else items.push(mkDir('?', mems.map(mkLeaf), true));
+          });
+          items.push(...junctionItems);
+          packages.set(sid, items);
+        }
+      }
+    }
+
+    return packages.get(centroid)||[];
+  }
+
+  // R3: dissolve single-child dirs
+  function dissolve(items) {
+    return items.flatMap(item=>{
+      if(item[0]==='leaf') return [item];
+      const [,name,children,unnamed]=item;
+      const dc=dissolve(children);
+      if(dc.length===1) return dc;
+      return [mkDir(name,dc,unnamed)];
+    });
+  }
+
+  const rootFT={name:'/',isDir:true,unnamed:false,children:[]};
+  const primaryComp=superComponents.reduce((a,b)=>b.length>a.length?b:a, superComponents[0]||[]);
+  const allRootItems=[];
+
+  superComponents.forEach(comp=>{
+    let items=buildCompItems(comp);
+    items=dissolve(items);
+    const isPrimary=comp.length===primaryComp.length && comp.every(v=>primaryComp.includes(v));
+    if(isPrimary) allRootItems.push(...items);
+    else if(items.length===1) allRootItems.push(items[0]);
+    else allRootItems.push(mkDir('?',items,true));
+  });
+
+  // R4: sole named dir at root -> dissolve
+  let finalItems=allRootItems;
+  if(finalItems.length===1 && finalItems[0][0]==='dir' && !finalItems[0][3]) {
+    const [,name,children]=finalItems[0];
+    finalItems=[mkLeaf(name),...children]; // dissolve: name node + children as siblings
+    // But children might contain dirs — find the first leaf to use as the node name
+    // Actually: the named dir's nodeId is the junction; promote it as a flat leaf
+  }
+
+  // Convert internal format to tree nodes for renderFileTree
+  function toTreeNode(item) {
+    if(item[0]==='leaf') {
+      const id=item[1]; // item[1] is the original node id
+      // find the original node id — item[1] might be a name, need to look up by name
+      const origId=Object.keys(nodes).find(k=>nodes[k]?.name===id) || id;
+      return {name:nodes[origId]?.name||id, isDir:false, nodeId:origId, children:[]};
+    }
+    const [,name,children,unnamed]=item;
+    // find nodeId for named dirs
+    const origId=Object.keys(nodes).find(k=>nodes[k]?.name===name);
+    return {name:unnamed?'?':name, isDir:true, unnamed, nodeId:origId,
+      children:children.map(toTreeNode)};
+  }
+
+  finalItems.forEach(item=>rootFT.children.push(toTreeNode(item)));
+
+  // Safety net: mark all nodeIds as placed (dirs included, to avoid duplicate leaves)
+  const placed=new Set();
+  function cp(n){if(n.nodeId)placed.add(n.nodeId);(n.children||[]).forEach(cp);}
+  cp(rootFT);
+  Object.keys(nodes).filter(id=>nodes[id]&&!placed.has(id))
+    .forEach(id=>rootFT.children.push({name:nodes[id].name,isDir:false,nodeId:id,children:[]}));
+
+  return rootFT;
+}
+
+
+function renderFileTree(tree) {
+  if(!tree)return'<div class="empty">Add nodes to see the tree.</div>';
+  return renderFTNode(tree,0);
+}
+function renderFTNode(node,depth){
+  const ind=depth?`<span style="display:inline-block;width:${depth*12}px"></span>`:'';
+  const icon=node.isDir?'▸':'·';
+  const col=node.unnamed?'var(--accent2)':node.isDir?'var(--accent)':'var(--text)';
+  const nm=node.unnamed?'?':node.name||'/';
+  let h=`<div style="display:flex;align-items:center;padding:2px 4px;gap:4px;">
+    ${ind}<span style="color:var(--muted);width:12px;text-align:center;font-size:10px">${icon}</span>
+    <span style="color:${col};font-size:11px">${nm}</span></div>`;
+  if(node.children?.length){
+    h+=`<div style="padding-left:${(depth+1)*12+12}px;border-left:1px solid var(--border);margin-left:${depth*12+6}px">`;
+    node.children.forEach(c=>{h+=renderFTNode(c,0);});h+='</div>';
+  }
+  return h;
+}
+
+function computeScore(tree){
+  if(!tree)return null;
+  const paths={};
+  function walk(n,p){if(!n.isDir){paths[n.nodeId]=p;return;}n.children.forEach(c=>walk(c,[...p,n.name||'?']));}
+  walk(tree,[]);
+  let tot=0,cnt=0;const seen=new Set();
+  Object.keys(nodes).forEach(id=>{nodes[id].mentions.forEach(mid=>{
+    const k=[id,mid].sort().join('|');if(seen.has(k)||!nodes[mid])return;seen.add(k);
+    const pa=paths[id]||[],pb=paths[mid]||[];let com=0;
+    for(let i=0;i<Math.min(pa.length,pb.length);i++){if(pa[i]===pb[i])com++;else break;}
+    tot+=(pa.length-com)+(pb.length-com);cnt++;
+  });});
+  return cnt?(tot/cnt).toFixed(2):'0.00';
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// CANVAS GRAPH LAYOUT (force-directed, simple)
+// ═══════════════════════════════════════════════════════════════════
+
+// Layout state per canvas
+const layouts = {c1:null, c2:null, c3:null};
+
+function initLayout(canvasId, nodeIds, edgeList) {
+  const W=200,H=200;
+  const pos={};
+  // place in circle
+  nodeIds.forEach((id,i)=>{
+    const a=(2*Math.PI*i)/nodeIds.length;
+    pos[id]={x:W/2+W*0.35*Math.cos(a),y:H/2+H*0.35*Math.sin(a),vx:0,vy:0};
+  });
+  return{pos,nodes:nodeIds,edges:edgeList,W,H};
+}
+
+function stepLayout(layout, iterations=30) {
+  const{pos,nodes:nids,edges,W,H}=layout;
+  for(let iter=0;iter<iterations;iter++){
+    // repulsion
+    for(let i=0;i<nids.length;i++)for(let j=i+1;j<nids.length;j++){
+      const a=pos[nids[i]],b=pos[nids[j]];
+      const dx=b.x-a.x,dy=b.y-a.y,d=Math.max(Math.sqrt(dx*dx+dy*dy),1);
+      const f=300/(d*d);
+      a.vx-=f*dx/d;a.vy-=f*dy/d;b.vx+=f*dx/d;b.vy+=f*dy/d;
+    }
+    // attraction along edges
+    edges.forEach(({from,to})=>{
+      const a=pos[from],b=pos[to];if(!a||!b)return;
+      const dx=b.x-a.x,dy=b.y-a.y,d=Math.max(Math.sqrt(dx*dx+dy*dy),1);
+      const f=0.01*d;
+      a.vx+=f*dx/d;a.vy+=f*dy/d;b.vx-=f*dx/d;b.vy-=f*dy/d;
+    });
+    // center gravity
+    nids.forEach(id=>{const p=pos[id];p.vx+=(W/2-p.x)*0.01;p.vy+=(H/2-p.y)*0.01;});
+    // integrate + dampen
+    nids.forEach(id=>{const p=pos[id];p.x+=p.vx;p.y+=p.vy;p.vx*=0.7;p.vy*=0.7;
+      p.x=Math.max(20,Math.min(W-20,p.x));p.y=Math.max(20,Math.min(H-20,p.y));});
+  }
+}
+
+// Resolve CSS variable to actual hex color via a temporary DOM element
+const _cssColorCache = {};
+function resolveCssColor(varOrHex) {
+  if (varOrHex.startsWith('#') || varOrHex.startsWith('rgb')) return varOrHex;
+  if (_cssColorCache[varOrHex]) return _cssColorCache[varOrHex];
+  const el = document.createElement('div');
+  el.style.color = varOrHex;
+  el.style.display = 'none';
+  document.body.appendChild(el);
+  const resolved = getComputedStyle(el).color;
+  document.body.removeChild(el);
+  // convert rgb(...) to hex
+  const m = resolved.match(/\d+/g);
+  if (m && m.length >= 3) {
+    const hex = '#' + m.slice(0,3).map(x => parseInt(x).toString(16).padStart(2,'0')).join('');
+    _cssColorCache[varOrHex] = hex;
+    return hex;
+  }
+  return varOrHex;
+}
+
+function hexWithAlpha(hex, alpha) {
+  // hex is #rrggbb, returns rgba string
+  const r = parseInt(hex.slice(1,3),16);
+  const g = parseInt(hex.slice(3,5),16);
+  const b = parseInt(hex.slice(5,7),16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+function drawGraph(canvasId, layout, nodeColor, nodeLabel) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  if (!rect.width || !rect.height) return;
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  const W = rect.width, H = rect.height;
+  const {pos, nodes: nids, edges} = layout;
+  const scaleX = W / layout.W, scaleY = H / layout.H;
+
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#0f0f0f';
+  ctx.fillRect(0, 0, W, H);
+
+  // edges
+  ctx.strokeStyle = '#3a3a3a';
+  ctx.lineWidth = 1.5;
+  edges.forEach(({from, to}) => {
+    const a = pos[from], b = pos[to];
+    if (!a || !b) return;
+    ctx.beginPath();
+    ctx.moveTo(a.x * scaleX, a.y * scaleY);
+    ctx.lineTo(b.x * scaleX, b.y * scaleY);
+    ctx.stroke();
+  });
+
+  // nodes + labels
+  nids.forEach(id => {
+    const p = pos[id];
+    if (!p) return;
+    const x = p.x * scaleX, y = p.y * scaleY;
+    const rawCol = nodeColor(id);
+    const col = resolveCssColor(rawCol);
+    const label = nodeLabel(id);
+    const r = 7;
+
+    // filled circle
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, 2 * Math.PI);
+    ctx.fillStyle = hexWithAlpha(col, 0.25);
+    ctx.fill();
+    ctx.strokeStyle = col;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // label drawn inside/below the node
+    ctx.font = `bold 9px 'JetBrains Mono', monospace`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    // dark background pill for readability
+    const tw = ctx.measureText(label).width;
+    ctx.fillStyle = hexWithAlpha('#0f0f0f', 0.75);
+    ctx.fillRect(x - tw/2 - 2, y + r + 1, tw + 4, 12);
+    ctx.fillStyle = col;
+    ctx.fillText(label, x, y + r + 7);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// MAIN RENDER
+// ═══════════════════════════════════════════════════════════════════
+let renderTimeout=null;
+function render(){
+  clearTimeout(renderTimeout);
+  renderTimeout=setTimeout(_render,50);
+}
+
+function _render() {
+  const data=computeAll();
+
+  // ── Panel 1: mention graph ──
+  if(data){
+    const{ids,cutVertices}=data;
+    const edges=[];const seen=new Set();
+    ids.forEach(id=>{nodes[id].mentions.forEach(mid=>{
+      const k=[id,mid].sort().join('|');if(!seen.has(k)&&nodes[mid]){seen.add(k);edges.push({from:id,to:mid});}
+    });});
+    if(!layouts.c1||JSON.stringify(ids.sort())!==JSON.stringify((layouts.c1._ids||[]).sort())){
+      layouts.c1=initLayout('c1',ids,edges);layouts.c1._ids=[...ids];
+      stepLayout(layouts.c1,200);
+    }else{layouts.c1.edges=edges;stepLayout(layouts.c1,5);}
+    drawGraph('c1',layouts.c1,
+      id=>cutVertices.has(id)?'var(--col-cut)':'var(--col-block)',
+      id=>nodes[id]?.name||id);
+  }else{const c=document.getElementById('c1');if(c){const ctx=c.getContext('2d');ctx.clearRect(0,0,c.width,c.height);}}
+
+  // ── Panel 2: raw BC-tree ──
+  if(data){
+    const{bcNodes,bcEdges}=data;
+    const nids=bcNodes.map(n=>n.id);
+    if(!layouts.c2||JSON.stringify(nids.sort())!==JSON.stringify((layouts.c2._ids||[]).sort())){
+      layouts.c2=initLayout('c2',nids,bcEdges);layouts.c2._ids=[...nids];
+      layouts.c2._meta=bcNodes;
+      stepLayout(layouts.c2,200);
+    }else{layouts.c2.edges=bcEdges;stepLayout(layouts.c2,5);}
+    const metaMap=new Map(bcNodes.map(n=>[n.id,n]));
+    drawGraph('c2',layouts.c2,
+      id=>{const n=metaMap.get(id);return n?.type==='cut'?'var(--col-cut)':'var(--col-block)';},
+      id=>{const n=metaMap.get(id);return n?.label||id;});
+  }
+
+  // ── Panel 3: collapsed BC-tree ──
+  if(data){
+    const{collNodes,collEdges,centroidSuper,centroidSupers}=data;
+    const nids=collNodes.map(n=>n.id);
+    if(!layouts.c3||JSON.stringify(nids.sort())!==JSON.stringify((layouts.c3._ids||[]).sort())){
+      layouts.c3=initLayout('c3',nids,collEdges);layouts.c3._ids=[...nids];
+      stepLayout(layouts.c3,200);
+    }else{layouts.c3.edges=collEdges;stepLayout(layouts.c3,5);}
+    const metaMap=new Map(collNodes.map(n=>[n.id,n]));
+    drawGraph('c3',layouts.c3,
+      id=>{
+        if(centroidSupers&&centroidSupers.has(id))return'var(--col-centroid)';
+        const n=metaMap.get(id);
+        if(!n)return'var(--muted)';
+        if(n.type==='centroid')return'var(--col-centroid)';
+        if(n.type==='cut')return'var(--col-cut)';
+        if(n.type==='chain'||n.type==='chaingroup')return'var(--col-chain)';
+        if(n.type==='block')return'var(--col-block)';
+        if(n.type==='node')return'var(--col-block)';
+        return'var(--muted)';
+      },
+      id=>{const n=metaMap.get(id);return n?.label||id;});
+  }
+
+  // ── Panel 4: file tree ──
+  const tree=data?buildFileTree(data):null;
+  document.getElementById('tree-body').innerHTML=renderFileTree(tree);
+  document.getElementById('score-val').textContent=computeScore(tree)??'—';
+}
+
+// Resize observer to redraw canvases on resize
+const ro=new ResizeObserver(()=>render());
+['c1','c2','c3'].forEach(id=>{const c=document.getElementById(id);if(c)ro.observe(c.parentElement);});
+
+document.getElementById('new-node-input').addEventListener('keydown',e=>{if(e.key==='Enter')addNode();});
+
+// ── Presets ──
+const PRESETS={
+  'star+chain':{
+    nodeNames:['center','a','b','c','d','e','f','g'],
+    edges:[['center','a'],['center','b'],['center','c'],['center','d'],['d','e'],['e','f'],['f','g']]
+  },
+  'two stars':{
+    nodeNames:['hub1','hub2','a','b','c','d','e','f','bridge'],
+    edges:[['hub1','a'],['hub1','b'],['hub1','c'],['hub1','bridge'],['hub2','d'],['hub2','e'],['hub2','f'],['hub2','bridge']]
+  },
+  'triangle+chain':{
+    nodeNames:['x','y','z','p','q','r'],
+    edges:[['x','y'],['y','z'],['z','x'],['x','p'],['p','q'],['q','r']]
+  },
+  'auth+plotting':{
+    nodeNames:['auth','plotting','deployment','login','register','token','chart','render','config'],
+    edges:[['login','auth'],['register','auth'],['token','auth'],['chart','plotting'],['render','plotting'],['render','chart'],['config','deployment']]
+  },
+  'biconn+chains':{
+    nodeNames:['a1','b1','c1','hub1','x','y','hub2','a2','b2','c2'],
+    edges:[
+      // left star spokes -> hub1
+      ['a1','hub1'],['b1','hub1'],['c1','hub1'],
+      // biconnected component hub1-x-y-hub2 (square with diagonal)
+      ['hub1','x'],['hub1','y'],['x','hub2'],['y','hub2'],['x','y'],
+      // right star spokes -> hub2
+      ['hub2','a2'],['hub2','b2'],['hub2','c2']
+    ]
+  },
+  'complex':{
+    nodeNames:['p','q','r','s1','s2','A','B','t','c1','c2','c3','c4','end'],
+    edges:[
+      // left chain p-q-r-s1-s2 (cuts q,r,s1 -> collapses into one group)
+      ['p','q'],['q','r'],['r','s1'],['s1','s2'],
+      // biconnected block s2-A-B-t (s2 and t are junctions)
+      ['s2','A'],['s2','B'],['s2','t'],['A','B'],['A','t'],['B','t'],
+      // right chain t-c1-c2-c3-c4-end (cuts c1,c2,c3,c4 -> collapses)
+      ['t','c1'],['c1','c2'],['c2','c3'],['c3','c4'],['c4','end']
+    ]
+  }
+};
+
+function loadPreset(name){
+  if(!name)return;
+  nodes={};nextId=1;
+  const p=PRESETS[name];
+  p.nodeNames.forEach(n=>addNode(n));
+  const byName={};Object.values(nodes).forEach(n=>{byName[n.name]=n.id;});
+  p.edges.forEach(([a,b])=>{
+    if(byName[a]&&byName[b]){nodes[byName[a]].mentions.add(byName[b]);nodes[byName[b]].mentions.add(byName[a]);}
+  });
+  layouts.c1=null;layouts.c2=null;layouts.c3=null;
+  renderNodes();render();
+  document.getElementById('preset-select').value='';
+}
+
+loadPreset('star+chain');
+</script>
+</body>
+</html>
