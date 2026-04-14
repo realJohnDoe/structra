@@ -9,13 +9,11 @@ import {
   Box,
   Text,
   Group,
-  Button,
   Slider,
   Stack,
   Paper,
   ScrollArea,
   ActionIcon,
-  Tooltip,
 } from "@mantine/core";
 import { Upload, Menu, ArrowUp, RefreshCw } from "lucide-react";
 import { useRepoVisualization } from "../hooks/useRepoVisualization";
@@ -41,20 +39,6 @@ export interface SubtreeData {
   eH: number;
   optEH: number;
   intEdges: Edge[];
-}
-
-interface CrossEdge {
-  from: string;
-  to: string;
-  cost: number;
-  opt: number;
-  waste: number;
-}
-
-interface Suggestion {
-  node: TreeNode;
-  target: TreeNode;
-  delta: number;
 }
 
 interface Preset {
@@ -398,42 +382,16 @@ function countLeaves(nd: TreeNode): number {
   return nd.children.reduce((s, c) => s + countLeaves(c), 0);
 }
 
-function suggestions(
-  nd: TreeNode,
-  byPath: Record<string, TreeNode>,
-  edgeArr: Edge[],
-): Suggestion[] {
-  const base = globalH({ root: nd, byPath }, edgeArr);
-  const results: Suggestion[] = [];
-
-  for (const ch of nd.children) {
-    const targets: TreeNode[] = [];
-    nd.children.forEach((sib) => {
-      if (sib.id !== ch.id && !sib.isLeaf) targets.push(sib);
-    });
-    if (nd.parent) targets.push(nd.parent);
-
-    for (const tgt of targets) {
-      if (tgt.id === nd.id) continue;
-      const simH = simulateMove(ch, tgt, byPath, edgeArr, base);
-      const delta = base - simH;
-      if (delta > 0.001) results.push({ node: ch, target: tgt, delta });
-    }
+// Helper function for entropy color
+function entropyColor(frac: number): string {
+  const f = Math.max(0, Math.min(1, frac));
+  if (f < 0.5) {
+    const t = f * 2;
+    return `rgb(${Math.round(56 + t * 194)}, ${Math.round(216 - t * 72)}, ${Math.round(144 - t * 104)})`;
+  } else {
+    const t = (f - 0.5) * 2;
+    return `rgb(${Math.round(250 - t * 30)}, ${Math.round(144 - t * 100)}, ${Math.round(40 - t * 32)})`;
   }
-
-  results.sort((a, b) => b.delta - a.delta);
-  return results.slice(0, 5);
-}
-
-function simulateMove(
-  ch: TreeNode,
-  tgt: TreeNode,
-  byPath: Record<string, TreeNode>,
-  edgeArr: Edge[],
-  baseH: number,
-): number {
-  // Simplified simulation - in real implementation would need to properly update tree structure
-  return baseH * 0.95; // Placeholder
 }
 
 // React component
@@ -444,6 +402,10 @@ export const RepoExplorer: React.FC = () => {
   } | null>(null);
   const [edges, setEdges] = useState<Edge[]>([]);
   const [selected, setSelected] = useState<TreeNode | null>(null);
+  const [selectedChild, setSelectedChild] = useState<{
+    node: TreeNode;
+    index: number;
+  } | null>(null);
   const [weight, setWeight] = useState(0);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [repoLabel, setRepoLabel] = useState("no repo");
@@ -515,7 +477,7 @@ export const RepoExplorer: React.FC = () => {
 
   const handleNodeClick = useCallback((node: TreeNode, index: number) => {
     // Handle node click - show child details
-    setSelected(node);
+    setSelectedChild({ node, index });
   }, []);
 
   const handleNavigate = useCallback((node: TreeNode) => {
@@ -857,8 +819,7 @@ export const RepoExplorer: React.FC = () => {
             <Box
               flex={1}
               pos="relative"
-              overflow="hidden"
-              style={{ minWidth: 0 }}
+              style={{ overflow: "hidden", minWidth: 0 }}
             >
               <svg
                 ref={svgRef}
@@ -941,34 +902,290 @@ export const RepoExplorer: React.FC = () => {
                       : "---"}
                   </Text>
                 </Box>
+                {selected && tree && (
+                  <Stack gap="xs" mt="xs">
+                    {(() => {
+                      const { nH, eH, optEH, intEdges } = subtreeH(
+                        selected,
+                        tree.byPath,
+                        edges,
+                      );
+                      const nLeaves = countLeaves(selected);
+                      const waste = Math.max(0, eH - optEH);
+                      const wasteCol =
+                        waste > 1
+                          ? COLORS.red
+                          : waste > 0.2
+                            ? COLORS.amber
+                            : COLORS.green;
+                      return (
+                        <>
+                          <Group justify="space-between">
+                            <Text size="9px" c={COLORS.muted}>
+                              H_node
+                            </Text>
+                            <Text size="9px" c={COLORS.text}>
+                              {nH.toFixed(3)}
+                            </Text>
+                          </Group>
+                          <Group justify="space-between">
+                            <Text size="9px" c={COLORS.muted}>
+                              H_edge current
+                            </Text>
+                            <Text size="9px" c={COLORS.text}>
+                              {eH.toFixed(3)}
+                            </Text>
+                          </Group>
+                          <Group justify="space-between">
+                            <Text size="9px" c={COLORS.muted}>
+                              H_edge optimal
+                            </Text>
+                            <Text size="9px" c={COLORS.text}>
+                              {optEH.toFixed(3)}
+                            </Text>
+                          </Group>
+                          <Group justify="space-between">
+                            <Text size="9px" c={COLORS.muted}>
+                              edge waste
+                            </Text>
+                            <Text size="9px" c={wasteCol}>
+                              {waste.toFixed(3)}
+                            </Text>
+                          </Group>
+                          <Box
+                            style={{
+                              borderTop: `1px solid ${COLORS.border}`,
+                              marginTop: "3px",
+                              paddingTop: "3px",
+                            }}
+                          >
+                            <Group justify="space-between">
+                              <Text size="9px" c={COLORS.muted}>
+                                files
+                              </Text>
+                              <Text size="9px" c={COLORS.text}>
+                                {nLeaves}
+                              </Text>
+                            </Group>
+                            <Group justify="space-between">
+                              <Text size="9px" c={COLORS.muted}>
+                                edges
+                              </Text>
+                              <Text size="9px" c={COLORS.text}>
+                                {intEdges.length}
+                              </Text>
+                            </Group>
+                          </Box>
+                        </>
+                      );
+                    })()}
+                  </Stack>
+                )}
               </Box>
 
-              {/* Move Suggestions */}
-              <Box
-                flex={1}
-                p="xs"
-                style={{
-                  overflow: "hidden",
-                  display: "flex",
-                  flexDirection: "column",
-                }}
-              >
-                <Text
-                  size="8px"
-                  c={COLORS.muted}
+              {/* Child List */}
+              {selected && tree && selected.children.length > 0 && (
+                <Box
+                  p="xs"
+                  style={{ borderBottom: `1px solid ${COLORS.border}` }}
+                >
+                  <Text
+                    size="8px"
+                    c={COLORS.muted}
+                    style={{
+                      letterSpacing: "0.1em",
+                      textTransform: "uppercase",
+                      marginBottom: "6px",
+                    }}
+                  >
+                    children ({selected.children.length})
+                  </Text>
+                  <Stack gap="xs">
+                    {selected.children.map((child, i) => {
+                      const {
+                        total: chH,
+                        eH: chEH,
+                        optEH: chOpt,
+                      } = subtreeH(child, tree.byPath, edges);
+                      const chWaste = Math.max(0, chEH - chOpt);
+                      const maxWaste = Math.max(
+                        ...selected.children.map((c) => {
+                          const h = subtreeH(c, tree.byPath, edges);
+                          return Math.max(0, h.eH - h.optEH);
+                        }),
+                        0.001,
+                      );
+                      const chCol = entropyColor(
+                        selected.children.length > 1 ? chWaste / maxWaste : 0,
+                      );
+                      return (
+                        <Paper
+                          key={child.id}
+                          p="xs"
+                          style={{
+                            cursor: "pointer",
+                            borderLeft: `3px solid ${chCol}`,
+                            background:
+                              selectedChild?.node.id === child.id
+                                ? COLORS.bg2
+                                : "transparent",
+                          }}
+                          onClick={() =>
+                            setSelectedChild({ node: child, index: i })
+                          }
+                        >
+                          <Group justify="space-between">
+                            <Text
+                              size="9px"
+                              c={COLORS.text}
+                              style={{
+                                maxWidth: "140px",
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              {child.name}
+                              {child.isLeaf ? " ·" : ""}
+                            </Text>
+                            <Text size="8px" c={COLORS.muted}>
+                              {chH.toFixed(2)}
+                            </Text>
+                          </Group>
+                        </Paper>
+                      );
+                    })}
+                  </Stack>
+                </Box>
+              )}
+
+              {/* Child Detail Panel or Move Suggestions */}
+              {selectedChild && tree ? (
+                <Box
+                  flex={1}
+                  p="xs"
                   style={{
-                    letterSpacing: "0.15em",
-                    textTransform: "uppercase",
+                    overflow: "hidden",
+                    display: "flex",
+                    flexDirection: "column",
                   }}
                 >
-                  move suggestions
-                </Text>
-                <Box flex={1} p="xs" style={{ overflow: "hidden" }}>
-                  <Text size="9px" c={COLORS.muted} italic>
-                    {tree ? "no improvements found" : "load a repo"}
+                  <Text
+                    size="8px"
+                    c={COLORS.amber}
+                    style={{
+                      letterSpacing: "0.15em",
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    {selectedChild.node.name}
+                    {selectedChild.node.isLeaf ? " (leaf)" : ""}
                   </Text>
+                  <Box flex={1} style={{ overflowY: "auto" }}>
+                    {(() => {
+                      const { total, nH, eH, optEH, intEdges } = subtreeH(
+                        selectedChild.node,
+                        tree.byPath,
+                        edges,
+                      );
+                      const nLeaves = countLeaves(selectedChild.node);
+                      const waste = Math.max(0, eH - optEH);
+                      const wasteCol =
+                        waste > 1
+                          ? COLORS.red
+                          : waste > 0.2
+                            ? COLORS.amber
+                            : COLORS.green;
+                      return (
+                        <Stack gap="xs" mt="xs">
+                          <Group justify="space-between">
+                            <Text size="9px" c={COLORS.muted}>
+                              H total
+                            </Text>
+                            <Text size="9px" c={COLORS.text}>
+                              {total.toFixed(3)}
+                            </Text>
+                          </Group>
+                          <Group justify="space-between">
+                            <Text size="9px" c={COLORS.muted}>
+                              H_node
+                            </Text>
+                            <Text size="9px" c={COLORS.text}>
+                              {nH.toFixed(3)}
+                            </Text>
+                          </Group>
+                          <Group justify="space-between">
+                            <Text size="9px" c={COLORS.muted}>
+                              H_edge
+                            </Text>
+                            <Text size="9px" c={COLORS.text}>
+                              {eH.toFixed(3)}
+                            </Text>
+                          </Group>
+                          <Group justify="space-between">
+                            <Text size="9px" c={COLORS.muted}>
+                              edge waste
+                            </Text>
+                            <Text size="9px" c={wasteCol}>
+                              {waste.toFixed(3)}
+                            </Text>
+                          </Group>
+                          <Box
+                            style={{
+                              borderTop: `1px solid ${COLORS.border}`,
+                              marginTop: "3px",
+                              paddingTop: "3px",
+                            }}
+                          >
+                            <Group justify="space-between">
+                              <Text size="9px" c={COLORS.muted}>
+                                files
+                              </Text>
+                              <Text size="9px" c={COLORS.text}>
+                                {nLeaves}
+                              </Text>
+                            </Group>
+                            <Group justify="space-between">
+                              <Text size="9px" c={COLORS.muted}>
+                                internal edges
+                              </Text>
+                              <Text size="9px" c={COLORS.text}>
+                                {intEdges.length}
+                              </Text>
+                            </Group>
+                          </Box>
+                        </Stack>
+                      );
+                    })()}
+                  </Box>
                 </Box>
-              </Box>
+              ) : (
+                <Box
+                  flex={1}
+                  p="xs"
+                  style={{
+                    overflow: "hidden",
+                    display: "flex",
+                    flexDirection: "column",
+                  }}
+                >
+                  <Text
+                    size="8px"
+                    c={COLORS.muted}
+                    style={{
+                      letterSpacing: "0.15em",
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    move suggestions
+                  </Text>
+                  <Box flex={1} p="xs" style={{ overflow: "hidden" }}>
+                    <Text size="9px" c={COLORS.muted} fs="italic">
+                      {tree ? "no improvements found" : "load a repo"}
+                    </Text>
+                  </Box>
+                </Box>
+              )}
 
               {/* Legend */}
               <Box
