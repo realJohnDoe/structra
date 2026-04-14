@@ -1,0 +1,1322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RepoLens</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,300;0,400;0,600;1,300&family=Syne:wght@700;800&display=swap');
+:root{
+  --bg:#07090e;--bg1:#0b0e17;--bg2:#0f1320;--border:#181e30;--border2:#1e2640;
+  --dim:#252e48;--muted:#4a5a78;--text:#9aaac0;--bright:#c8d8e8;
+  --amber:#f0b040;--green:#38d890;--blue:#4488ff;--red:#e04848;--violet:#9060e0;
+  --font:'IBM Plex Mono',monospace;--head:'Syne',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;}
+body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:12px;display:flex;flex-direction:column;height:100vh;overflow:hidden;}
+
+/* ── Header ── */
+header{padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-shrink:0;flex-wrap:wrap;}
+.w-ctrl{display:flex;align-items:center;gap:5px;font-size:9px;color:var(--muted);}
+.w-lbl{letter-spacing:.08em;}
+.w-val{min-width:22px;}
+#w-slider{width:70px;accent-color:var(--amber);cursor:pointer;}
+.logo{font-family:var(--head);font-size:16px;font-weight:800;color:var(--amber);letter-spacing:-.3px;}
+.logo span{color:var(--muted);font-weight:700;}
+#repo-chip{font-size:9px;padding:2px 8px;border:1px solid var(--border2);color:var(--muted);letter-spacing:.08em;}
+.hdr-btns{margin-left:auto;display:flex;gap:6px;align-items:center;}
+button{font-family:var(--font);font-size:10px;cursor:pointer;border:none;letter-spacing:.08em;}
+.btn{background:var(--bg2);border:1px solid var(--border2);color:var(--text);padding:5px 10px;}
+.btn:hover{border-color:var(--amber);color:var(--amber);}
+.btn:disabled{opacity:.3;cursor:default;}
+
+/* ── App layout ── */
+.app{display:flex;flex:1;overflow:hidden;min-height:0;}
+
+/* sidebar */
+.sidebar{width:230px;flex-shrink:0;border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;transition:width .2s;}
+.sidebar.collapsed{width:0;border-right:none;}
+.sb-hd{padding:8px 12px;font-size:8px;color:var(--muted);letter-spacing:.18em;text-transform:uppercase;border-bottom:1px solid var(--border);flex-shrink:0;}
+.sb-body{flex:1;overflow-y:auto;padding:8px;}
+.dropzone{border:1px dashed var(--border2);padding:16px 10px;text-align:center;cursor:pointer;margin-bottom:10px;}
+.dropzone:hover,.dropzone.drag{border-color:var(--amber);background:#100d00;}
+.dz-icon{font-size:20px;opacity:.3;margin-bottom:6px;}
+.dz-label{font-size:9px;color:var(--muted);line-height:1.7;}
+input[type=file]{display:none;}
+.preset-grp{margin-bottom:12px;}
+.grp-lbl{font-size:8px;color:var(--dim);letter-spacing:.15em;text-transform:uppercase;margin-bottom:4px;}
+.preset{padding:5px 8px;border:1px solid var(--border);cursor:pointer;margin-bottom:2px;display:flex;justify-content:space-between;font-size:9px;}
+.preset:hover{border-color:var(--amber);color:var(--amber);}
+.preset-meta{color:var(--muted);font-size:8px;}
+.sb-stats{border-top:1px solid var(--border);padding:8px 12px;flex-shrink:0;}
+.sr{display:flex;justify-content:space-between;margin-bottom:3px;font-size:9px;}
+.sk{color:var(--muted);}
+.sv{color:var(--amber);font-weight:600;}
+
+/* toggle sidebar btn */
+#sb-toggle{position:absolute;left:0;top:50%;transform:translateY(-50%);z-index:10;background:var(--bg2);border:1px solid var(--border2);border-left:none;color:var(--muted);padding:8px 4px;font-size:10px;cursor:pointer;writing-mode:vertical-lr;display:none;}
+
+/* main area */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;position:relative;}
+.viz-bar{padding:6px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-shrink:0;flex-wrap:wrap;}
+.breadcrumb{flex:1;display:flex;align-items:center;gap:3px;min-width:0;overflow:hidden;}
+.crumb{font-size:9px;color:var(--muted);cursor:pointer;white-space:nowrap;}
+.crumb:hover{color:var(--amber);}
+.crumb.active{color:var(--bright);}
+.sep{color:var(--dim);font-size:9px;}
+
+/* viz + info side by side */
+.content-row{flex:1;display:flex;overflow:hidden;min-height:0;}
+.viz-wrap{flex:1;position:relative;overflow:hidden;min-width:0;}
+#viz-svg{width:100%;height:100%;display:block;}
+.empty{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--muted);pointer-events:none;}
+.empty-icon{font-size:36px;opacity:.15;}
+.empty-txt{font-size:10px;letter-spacing:.12em;text-align:center;line-height:1.9;}
+
+/* info panel */
+.info{width:220px;flex-shrink:0;border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;}
+.info-sec{border-bottom:1px solid var(--border);}
+.info-hd{padding:5px 10px;font-size:8px;color:var(--muted);letter-spacing:.15em;text-transform:uppercase;display:flex;align-items:center;gap:5px;}
+.info-hd::before{content:'';display:inline-block;width:4px;height:4px;border-radius:50%;background:currentColor;flex-shrink:0;}
+.info-body{padding:7px 10px;}
+#child-sec .info-hd{color:var(--amber);}
+#child-sec{background:#0d0f00;}
+.h-big{font-size:22px;font-weight:700;color:var(--amber);font-family:var(--head);text-align:center;padding:2px 0;}
+.hbd{display:flex;justify-content:space-between;font-size:9px;margin-bottom:2px;}
+.hbk{color:var(--muted);}
+.hbv{color:var(--text);}
+.sugg-list{display:flex;flex-direction:column;gap:3px;overflow-y:auto;max-height:160px;}
+.sugg{padding:5px 7px;border:1px solid var(--border);cursor:default;}
+.sugg:hover{border-color:var(--green);}
+.sugg-top{display:flex;justify-content:space-between;margin-bottom:2px;}
+.sugg-name{font-size:9px;color:var(--bright);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:120px;}
+.sugg-delta{font-size:9px;font-weight:600;color:var(--green);}
+.sugg-desc{font-size:8px;color:var(--muted);}
+.legend{padding:5px 10px;display:flex;flex-wrap:wrap;gap:6px;border-top:1px solid var(--border);}
+.leg{display:flex;align-items:center;gap:4px;font-size:8px;color:var(--muted);}
+.leg-swatch{width:16px;height:3px;border-radius:1px;}
+
+/* tooltip */
+.tt{position:absolute;background:var(--bg2);border:1px solid var(--border2);padding:5px 9px;font-size:9px;color:var(--bright);pointer-events:none;display:none;z-index:20;max-width:200px;line-height:1.6;}
+
+/* cross-edge list */
+.xe-list{max-height:120px;overflow-y:auto;margin-bottom:4px;}
+.xe-row{display:grid;grid-template-columns:1fr auto auto;gap:4px;align-items:baseline;padding:2px 0;border-bottom:1px solid var(--border);font-size:8px;}
+.xe-path{color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.xe-cost{color:var(--text);white-space:nowrap;}
+.xe-waste{white-space:nowrap;font-weight:600;}
+
+/* child list */
+.ch-list{max-height:130px;overflow-y:auto;margin-top:2px;}
+.ch-item{display:flex;justify-content:space-between;align-items:center;padding:3px 5px;margin-bottom:1px;cursor:pointer;border-left:3px solid var(--border);}
+.ch-item:hover{background:var(--bg2);}
+.ch-name{font-size:9px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:140px;}
+.ch-h{font-size:8px;color:var(--muted);flex-shrink:0;margin-left:4px;}
+
+/* mobile */
+@media(max-width:700px){
+  body{overflow:auto;height:auto;}
+  .app{flex-direction:column;overflow:visible;}
+  /* sidebar hidden by default on mobile — toggle with ☰ */
+  .sidebar{width:100%;max-height:0;overflow:hidden;border-right:none;border-bottom:none;transition:max-height .25s;}
+  .sidebar.open{max-height:280px;border-bottom:1px solid var(--border);}
+  .sidebar.collapsed{max-height:0 !important;overflow:hidden;}
+  .content-row{flex-direction:column;overflow:visible;}
+  /* Square viz area: use viewport width */
+  .viz-wrap{min-height:92vw;max-height:96vw;}
+  #viz-svg{width:100%;height:92vw;display:block;}
+  .info{width:100%;border-left:none;border-top:1px solid var(--border);}
+  /* Larger tap targets for mobile */
+  .btn{padding:7px 14px;font-size:11px;}
+  .crumb{font-size:11px;}
+}
+::-webkit-scrollbar{width:2px;height:2px;}
+::-webkit-scrollbar-track{background:var(--bg);}
+::-webkit-scrollbar-thumb{background:var(--dim);}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">RepoLens <span>entropy</span></div>
+  <span id="repo-chip">no repo</span>
+  <div class="w-ctrl" title="w=0: node-cost only · w=1: edge-count only">
+    <span class="w-lbl">w</span>
+    <input type="range" id="w-slider" min="0" max="1" step="0.1" value="0">
+    <span class="w-val" id="w-val">0.0</span>
+  </div>
+  <div class="hdr-btns">
+    <button class="btn" id="btn-sb">☰</button>
+    <button class="btn" id="btn-up" disabled>↑ up</button>
+    <button class="btn" id="btn-reset">⟳ reset</button>
+  </div>
+</header>
+
+<div class="app">
+  <div class="sidebar" id="sidebar">
+    <div class="sb-hd">source</div>
+    <div class="sb-body">
+      <div class="dropzone" id="dropzone">
+        <div class="dz-icon">⬡</div>
+        <div class="dz-label">drop .dot file<br>or click to browse</div>
+        <input type="file" id="file-in" accept=".dot,.gv">
+      </div>
+      <div class="preset-grp">
+        <div class="grp-lbl">Python scientific</div>
+        <div class="preset" data-p="numpy">numpy core <span class="preset-meta">~55 nodes</span></div>
+        <div class="preset" data-p="pandas">pandas <span class="preset-meta">~48 nodes</span></div>
+        <div class="preset" data-p="scipy">scipy.sparse <span class="preset-meta">~32 nodes</span></div>
+      </div>
+      <div class="preset-grp">
+        <div class="grp-lbl">Web frameworks</div>
+        <div class="preset" data-p="flask">flask <span class="preset-meta">~35 nodes</span></div>
+        <div class="preset" data-p="django">django core <span class="preset-meta">~50 nodes</span></div>
+        <div class="preset" data-p="fastapi">fastapi <span class="preset-meta">~28 nodes</span></div>
+      </div>
+      <div class="preset-grp">
+        <div class="grp-lbl">Systems</div>
+        <div class="preset" data-p="linux">linux fs/ <span class="preset-meta">~45 nodes</span></div>
+        <div class="preset" data-p="react">react-dom <span class="preset-meta">~38 nodes</span></div>
+      </div>
+    </div>
+    <div class="sb-stats">
+      <div class="sr"><span class="sk">nodes</span><span class="sv" id="sn">—</span></div>
+      <div class="sr"><span class="sk">edges</span><span class="sv" id="se">—</span></div>
+      <div class="sr"><span class="sk">depth</span><span class="sv" id="sd">—</span></div>
+      <div class="sr"><span class="sk">H global</span><span class="sv" id="sh">—</span></div>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="viz-bar">
+      <div class="breadcrumb" id="bc"><span class="crumb active">root</span></div>
+    </div>
+    <div class="content-row">
+      <div class="viz-wrap">
+        <div class="empty" id="empty">
+          <div class="empty-icon">⬡</div>
+          <div class="empty-txt">select a preset or drop a .dot file<br>to explore repository entropy</div>
+        </div>
+        <svg id="viz-svg" style="display:none"></svg>
+        <div class="tt" id="tt"></div>
+      </div>
+      <div class="info">
+        <!-- Parent (center node) stats — always visible at top -->
+        <div class="info-sec">
+          <div class="info-hd" id="parent-hd">parent</div>
+          <div class="info-body" id="parent-body" style="padding-bottom:4px;">
+            <div class="h-big" id="h-val">—</div>
+            <div id="hbd"></div>
+          </div>
+        </div>
+        <!-- Selected child stats — shown on tap -->
+        <div class="info-sec" id="child-sec" style="display:none;">
+          <div class="info-hd" id="child-hd">selected node</div>
+          <div class="info-body" id="child-body" style="overflow-y:auto;max-height:340px;padding-bottom:4px;"></div>
+        </div>
+        <!-- Move suggestions (for parent, shown when no child selected) -->
+        <div class="info-sec" id="sugg-sec" style="flex:1;overflow:hidden;display:flex;flex-direction:column;">
+          <div class="info-hd">move suggestions</div>
+          <div class="info-body" style="flex:1;overflow:hidden;padding-bottom:4px;">
+            <div class="sugg-list" id="sugg-list"><div style="color:var(--muted);font-size:9px;font-style:italic">load a repo</div></div>
+          </div>
+        </div>
+        <div class="legend">
+          <div class="leg"><div class="leg-swatch" style="background:var(--green)"></div>optimal</div>
+          <div class="leg"><div class="leg-swatch" style="background:var(--amber)"></div>medium</div>
+          <div class="leg"><div class="leg-swatch" style="background:var(--red)"></div>misplaced</div>
+          <div class="leg" style="margin-top:2px;width:100%;color:var(--dim);font-size:7px;">arc width=H · color=waste vs optimal</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+// DATA
+// ═══════════════════════════════════════════
+let tree = null, edges = [], selected = null;
+
+function parseDot(src) {
+  src = src.replace(/\/\/[^\n]*/g,'').replace(/\/\*[\s\S]*?\*\//g,'');
+  const nodeSet = new Set(), edgeArr = [];
+  // edges: "a" -> "b"  or  a -> b  (directed or undirected)
+  const re = /"([^"]+)"\s*-[->]\s*"([^"]+)"|([A-Za-z0-9_./:-]+)\s*-[->]\s*([A-Za-z0-9_./:-]+)/g;
+  let m;
+  while((m=re.exec(src))!==null){
+    const a=(m[1]||m[3]).trim(), b=(m[2]||m[4]).trim();
+    if(a&&b&&!a.startsWith('{')){
+      nodeSet.add(a); nodeSet.add(b);
+      edgeArr.push({from:a,to:b});
+    }
+  }
+  // standalone nodes with attributes
+  const nr=/"([^"]+)"\s*\[/g;
+  while((m=nr.exec(src))!==null) nodeSet.add(m[1]);
+  return {nodes:[...nodeSet], edges:edgeArr};
+}
+
+function buildTree(nodes) {
+  const root={id:'',name:'root',path:'',children:[],parent:null,isLeaf:false};
+  const byPath={'':root};
+  function ensure(p){
+    if(byPath[p])return byPath[p];
+    const parts=p.split('/');
+    const name=parts[parts.length-1];
+    const parentPath=parts.slice(0,-1).join('/');
+    const par=ensure(parentPath);
+    const nd={id:p,name,path:p,children:[],parent:par,isLeaf:true};
+    par.children.push(nd); par.isLeaf=false;
+    byPath[p]=nd; return nd;
+  }
+  [...nodes].sort((a,b)=>a.split('/').length-b.split('/').length||a.localeCompare(b))
+    .forEach(n=>ensure(n));
+  // collapse single-child pass-through dirs
+  function collapse(nd){
+    nd.children.forEach(collapse);
+    while(nd.children.length===1 && !nodes.includes(nd.path) && nd.path!==''){
+      const ch=nd.children[0];
+      nd.name=nd.name+'/'+ch.name;
+      nd.path=ch.path; nd.id=ch.path;
+      nd.children=ch.children; nd.isLeaf=ch.isLeaf;
+      nd.children.forEach(c=>c.parent=nd);
+      byPath[nd.path]=nd;
+    }
+  }
+  collapse(root);
+  return {root,byPath};
+}
+
+// ── Entropy ──────────────────────────────
+// w=0: pure node-cost  → cost per internal node = ln(max(2,k)), edge-path cost = 0
+// w=1: pure edge-count → cost per dependency edge = path length (# internal nodes), node cost = 0
+// blend: nodeCost(k) = (1-w)*ln(max(2,k)),  edgeCost = w * pathLength + (1-w) * Σln(k)
+let W = 0; // global weight, updated by slider
+
+function getSubtreeIds(nd){
+  const s=new Set();
+  (function walk(n){s.add(n.path);n.children.forEach(walk);})(nd);
+  return s;
+}
+
+function pathNodes(nd1, nd2){
+  const ancA=[], ancB=[];
+  let n=nd1; while(n){ancA.push(n);n=n.parent;}
+  let m=nd2; while(m){ancB.push(m);m=m.parent;}
+  const setA=new Set(ancA.map(x=>x.id));
+  let lca=null;
+  for(const x of ancB) if(setA.has(x.id)){lca=x;break;}
+  if(!lca) return [];
+  const toA=[],toB=[];
+  n=nd1; while(n&&n.id!==lca.id){toA.push(n);n=n.parent;}
+  m=nd2; while(m&&m.id!==lca.id){toB.push(m);m=m.parent;}
+  return [...toA.reverse(),lca,...toB];
+}
+
+// Per-edge cost: blend of path-length (w) and sum-ln(k) (1-w)
+function edgeCost(byPath, a, b){
+  const na=byPath[a],nb=byPath[b];
+  if(!na||!nb) return 0;
+  const path=pathNodes(na,nb);
+  const internalNodes=path.filter(nd=>!nd.isLeaf&&nd.children.length>0);
+  const pathLen=internalNodes.length;         // pure edge-count contribution
+  const sumLnK=internalNodes.reduce((s,nd)=>s+Math.log(Math.max(2,nd.children.length)),0);
+  return W*pathLen + (1-W)*sumLnK;
+}
+
+// Optimal edge cost: both nodes in same leaf-dir → path through 1 internal node of 2 children
+function optEdgeCost(){
+  const optLnK=Math.log(2);   // ln(2) for a 2-child node
+  return W*1 + (1-W)*optLnK;  // 1 internal node on optimal path
+}
+
+// Node structural entropy (independent of edges): sum ln(k) × (1-w) per internal node
+function nodeStructCost(nd){
+  let nH=0;
+  (function walk(n){
+    if(!n.isLeaf&&n.children.length>0) nH+=(1-W)*Math.log(Math.max(2,n.children.length));
+    n.children.forEach(walk);
+  })(nd);
+  return nH;
+}
+
+function subtreeH(nd, byPath, edgeArr){
+  const ids=getSubtreeIds(nd);
+  const nH=nodeStructCost(nd);
+  const intEdges=edgeArr.filter(e=>ids.has(e.from)&&ids.has(e.to));
+  let eH=intEdges.reduce((s,e)=>s+edgeCost(byPath,e.from,e.to),0);
+  const optEH=intEdges.length*optEdgeCost();
+  return{total:nH+eH, nH, eH, optEH, intEdges};
+}
+
+// Cross-subtree edges from a node's perspective: edges leaving or entering its subtree
+function crossEdges(nd, byPath, edgeArr){
+  const ids=getSubtreeIds(nd);
+  return edgeArr
+    .filter(e=>(ids.has(e.from)&&!ids.has(e.to))||(!ids.has(e.from)&&ids.has(e.to)))
+    .map(e=>{
+      const cost=edgeCost(byPath,e.from,e.to);
+      const opt=optEdgeCost();
+      return{from:e.from,to:e.to,cost,opt,waste:Math.max(0,cost-opt)};
+    })
+    .sort((a,b)=>b.waste-a.waste);
+}
+
+function globalH(){
+  return tree ? subtreeH(tree.root,tree.byPath,edges).total : 0;
+}
+
+// Count leaf nodes in subtree
+function countLeaves(nd){
+  if(nd.isLeaf) return 1;
+  return nd.children.reduce((s,c)=>s+countLeaves(c),0);
+}
+
+// ── Suggestions ──────────────────────────
+function suggestions(nd, byPath, edgeArr){
+  const base=globalH();
+  const results=[];
+  for(const ch of nd.children){
+    const targets=[];
+    // siblings that are dirs
+    nd.children.forEach(sib=>{if(sib.id!==ch.id&&!sib.isLeaf)targets.push(sib);});
+    // parent's parent
+    if(nd.parent) targets.push(nd.parent);
+    for(const tgt of targets){
+      if(tgt.id===nd.id) continue;
+      const simH=simulateMove(ch,tgt,byPath,edgeArr);
+      const delta=base-simH;
+      if(delta>0.001) results.push({node:ch,target:tgt,delta});
+    }
+  }
+  results.sort((a,b)=>b.delta-a.delta);
+  return results.slice(0,5);
+}
+
+function simulateMove(ch,tgt,byPath,edgeArr){
+  const op=ch.parent;
+  op.children=op.children.filter(c=>c.id!==ch.id);
+  op.isLeaf=op.children.length===0;
+  ch.parent=tgt; tgt.children.push(ch); tgt.isLeaf=false;
+  const h=globalH();
+  tgt.children=tgt.children.filter(c=>c.id!==ch.id);
+  ch.parent=op; op.children.push(ch);
+  op.isLeaf=op.children.length===0;
+  tgt.isLeaf=tgt.children.length===0;
+  return h;
+}
+
+// ═══════════════════════════════════════════
+// VISUALIZATION  (chord-diagram style)
+// ═══════════════════════════════════════════
+const NS='http://www.w3.org/2000/svg';
+function el(tag,at={}){const e=document.createElementNS(NS,tag);for(const[k,v] of Object.entries(at))e.setAttribute(k,v);return e;}
+function tx(at,txt){const e=el('text',at);e.textContent=txt;return e;}
+
+// Color scale: green(optimal) → amber → red(misplaced)
+function entropyColor(frac){
+  // frac 0=good, 1=bad
+  const f=Math.max(0,Math.min(1,frac));
+  if(f<0.5){
+    // green → amber
+    const t=f*2;
+    return `rgb(${Math.round(56+t*194)},${Math.round(216-t*72)},${Math.round(144-t*104)})`;
+  } else {
+    // amber → red
+    const t=(f-0.5)*2;
+    return `rgb(${Math.round(250-t*30)},${Math.round(144-t*100)},${Math.round(40-t*32)})`;
+  }
+}
+
+function render(nd){
+  if(!nd||!tree) return;
+  selected=nd;
+  const svg=document.getElementById('viz-svg');
+  const W_px=svg.clientWidth||500, H_px=svg.clientHeight||500;
+  svg.innerHTML='';
+  svg.setAttribute('viewBox',`0 0 ${W_px} ${H_px}`);
+  const cx=W_px/2, cy=H_px/2;
+  const effectiveRoot=(tree.root.children.length===1)?tree.root.children[0]:tree.root;
+
+  // subtle dot grid
+  {const g=el('g',{opacity:'0.035'});
+  for(let x=0;x<W_px;x+=24) for(let y=0;y<H_px;y+=24)
+    g.appendChild(el('circle',{cx:x,cy:y,r:'0.8',fill:'#fff'}));
+  svg.appendChild(g);}
+
+  const children=nd.children;
+  if(!children.length){
+    svg.appendChild(tx({'text-anchor':'middle','dominant-baseline':'middle',
+      x:cx,y:cy,fill:'#445','font-size':'13','font-family':'IBM Plex Mono,monospace'},
+      nd.name+' (leaf)'));
+    updateParentPanel(nd); updateBc(nd); return;
+  }
+
+  const n=children.length;
+  const R=Math.min(cx,cy)*0.78;
+
+  // Arc layout — angular width proportional to current subtree entropy
+  const {intEdges:allIntEdges}=subtreeH(nd,tree.byPath,edges);
+  const childHvals=children.map(c=>subtreeH(c,tree.byPath,edges));
+  const totalChildH=childHvals.reduce((s,h)=>s+Math.max(h.total,0.01),0);
+  const minArcFrac=0.03; // minimum angular fraction per node (so tiny nodes stay visible)
+  // Distribute 2π minus gaps proportionally to entropy
+  const gapTotal=n*0.025; // small fixed gap between arcs
+  const usable=2*Math.PI-gapTotal;
+  const arcFracs=childHvals.map(h=>{
+    const raw=Math.max(h.total,0.01)/totalChildH;
+    return Math.max(raw, minArcFrac/n);
+  });
+  // Normalise so they sum to 1
+  const fracSum=arcFracs.reduce((a,b)=>a+b,0);
+  const arcSpans=arcFracs.map(f=>f/fracSum*usable);
+  const gapPer=gapTotal/n;
+
+  // Compute start angles
+  let curA=-Math.PI/2;
+  const arcMid=[], arcStart=[], arcEnd=[];
+  arcSpans.forEach((span,i)=>{
+    arcStart.push(curA);
+    arcMid.push(curA+span/2);
+    arcEnd.push(curA+span);
+    curA+=span+gapPer;
+  });
+
+  // Arc thickness: fixed comfortable size
+  const arcThick=Math.min(34,Math.max(14,Math.min(W_px,H_px)*0.055));
+  const innerR=R-arcThick/2, outerR=R+arcThick/2;
+
+  // Chord radius: slightly inside the arc ring so there's a visible gap
+  const chordR = innerR - 4;
+
+  // Compute cross-edge bundles (store individual edges for the detail list)
+  const childIds=children.map(c=>getSubtreeIds(c));
+  const bundles={};
+  let maxBundleH=0.001;
+  for(const e of edges){
+    let fi=-1,ti=-1;
+    childIds.forEach((ids,i)=>{if(ids.has(e.from))fi=i;if(ids.has(e.to))ti=i;});
+    if(fi>=0&&ti>=0&&fi!==ti){
+      const k=Math.min(fi,ti)+'_'+Math.max(fi,ti);
+      if(!bundles[k]) bundles[k]={from:Math.min(fi,ti),to:Math.max(fi,ti),totalH:0,optH:0,count:0,edgeList:[]};
+      const ec=edgeCost(tree.byPath,e.from,e.to);
+      const oc=optEdgeCost();
+      bundles[k].totalH+=ec;
+      bundles[k].optH+=oc;
+      bundles[k].count++;
+      bundles[k].edgeList.push({from:e.from,to:e.to,cost:ec,opt:oc,waste:Math.max(0,ec-oc)});
+      if(bundles[k].totalH>maxBundleH) maxBundleH=bundles[k].totalH;
+    }
+  }
+  const bundleVals=Object.values(bundles).map(b=>b.totalH);
+  const minBH=bundleVals.length?Math.min(...bundleVals):0;
+  const rangeBH=Math.max(maxBundleH-minBH,0.001);
+  // Store bundle index by child pair for highlight lookups
+  const bundleByPair=bundles; // key = "from_to"
+
+  // Draw chords: endpoints at chordR (gap from arc), square ends
+  for(const b of Object.values(bundles)){
+    const ai=arcMid[b.from], aj=arcMid[b.to];
+    const x1=cx+chordR*Math.cos(ai), y1=cy+chordR*Math.sin(ai);
+    const x2=cx+chordR*Math.cos(aj), y2=cy+chordR*Math.sin(aj);
+    const ctrl=0.3;
+    const bx1=cx+chordR*ctrl*Math.cos(ai), by1=cy+chordR*ctrl*Math.sin(ai);
+    const bx2=cx+chordR*ctrl*Math.cos(aj), by2=cy+chordR*ctrl*Math.sin(aj);
+    const waste=b.totalH>0?(b.totalH-b.optH)/b.totalH:0;
+    const col=entropyColor(Math.min(1,waste*1.3));
+    const relH=(b.totalH-minBH)/rangeBH;
+    const sw=Math.max(0.7, 0.8+relH*3.2);
+    const opacity=0.3+0.5*relH;
+    svg.appendChild(el('path',{
+      d:`M${x1},${y1} C${bx1},${by1} ${bx2},${by2} ${x2},${y2}`,
+      fill:'none',stroke:col,'stroke-width':sw.toFixed(2),
+      opacity:opacity.toFixed(2),'stroke-linecap':'square',
+      'data-from':b.from,'data-to':b.to,'data-sw':sw.toFixed(2),'data-op':opacity.toFixed(2)
+    }));
+  }
+
+  // Max subtree H for color normalization
+  const maxSubH=Math.max(...childHvals.map(h=>h.total),0.001);
+  // Max WASTE for color: waste = current - optimal (by entropy)
+  const optSubH=children.map((c,i)=>childHvals[i].optEH);
+  const maxWaste=Math.max(...childHvals.map((h,i)=>h.eH-h.optEH),0.001);
+
+  // Node arcs
+  children.forEach((ch,i)=>{
+    const h=childHvals[i];
+    const aS=arcStart[i], aE=arcEnd[i];
+
+    // Color = waste (delta from optimal), size = current H (angular width already done)
+    const waste=(h.eH-h.optEH)/Math.max(maxWaste,0.001);
+    const col=entropyColor(Math.min(1,waste));
+
+    const x1o=cx+outerR*Math.cos(aS),y1o=cy+outerR*Math.sin(aS);
+    const x2o=cx+outerR*Math.cos(aE),y2o=cy+outerR*Math.sin(aE);
+    const x1i=cx+innerR*Math.cos(aE),y1i=cy+innerR*Math.sin(aE);
+    const x2i=cx+innerR*Math.cos(aS),y2i=cy+innerR*Math.sin(aS);
+    const lg=(aE-aS)>Math.PI?1:0;
+
+    const g=el('g',{cursor:'pointer','data-idx':i});
+    const arcPath=`M${x1o},${y1o} A${outerR},${outerR} 0 ${lg},1 ${x2o},${y2o} L${x1i},${y1i} A${innerR},${innerR} 0 ${lg},0 ${x2i},${y2i} Z`;
+    const arc=el('path',{d:arcPath,fill:col,opacity:'0.85',stroke:'var(--bg)','stroke-width':'1.5'});
+    g.appendChild(arc);
+
+    let tapCount=0, tapTimer=null;
+    g.addEventListener('click',(ev)=>{
+      ev.stopPropagation();
+      // Highlight chords for this arc
+      svg.querySelectorAll('path[data-from]').forEach(p=>{
+        const from=parseInt(p.getAttribute('data-from'));
+        const to=parseInt(p.getAttribute('data-to'));
+        const conn=(from===i||to===i);
+        const origSw=parseFloat(p.getAttribute('data-sw'));
+        const origOp=parseFloat(p.getAttribute('data-op'));
+        p.setAttribute('stroke-width', conn ? (origSw*2).toFixed(2) : '0.4');
+        p.setAttribute('opacity', conn ? '0.9' : '0.08');
+      });
+      svg.querySelectorAll('g[data-idx]').forEach(gr=>{
+        gr.querySelector('path').setAttribute('opacity', parseInt(gr.getAttribute('data-idx'))===i?'1':'0.35');
+      });
+      // Show child detail in top panel
+      showChildPanel(ch, i, nd);
+      // Double-tap to navigate
+      tapCount++;
+      if(tapTimer) clearTimeout(tapTimer);
+      if(tapCount>=2 && !ch.isLeaf){ navigate(ch); tapCount=0; return; }
+      tapTimer=setTimeout(()=>{ tapCount=0; },500);
+    });
+    g.addEventListener('mouseenter',()=>arc.setAttribute('opacity','1'));
+    g.addEventListener('mouseleave',()=>arc.setAttribute('opacity','0.85'));
+    svg.appendChild(g);
+  });
+
+  // Reset on background click
+  svg.addEventListener('click',(ev)=>{
+    if(ev.target===svg||ev.target.tagName==='circle'){
+      render(selected); // clean re-render resets all highlight
+    }
+  });
+
+  // Center circle
+  const cR=Math.min(cx,cy)*0.25;
+  const centG=el('g');
+  centG.appendChild(el('circle',{cx,cy,r:cR,fill:'#07090e',stroke:'#f0b040','stroke-width':'1.5'}));
+  centG.appendChild(el('circle',{cx,cy,r:cR+4,fill:'none',stroke:'#f0b040','stroke-width':'0.5',opacity:'0.18'}));
+  const dispName=nd.name.length>13?nd.name.slice(0,12)+'…':nd.name;
+  centG.appendChild(tx({'text-anchor':'middle',x:cx,y:cy-6,fill:'#f0b040',
+    'font-size':dispName.length>10?'9':'11','font-weight':'600',
+    'font-family':'IBM Plex Mono,monospace','dominant-baseline':'middle'},dispName));
+  const {total:tH}=subtreeH(nd,tree.byPath,edges);
+  centG.appendChild(tx({'text-anchor':'middle',x:cx,y:cy+6,fill:'#7a6025',
+    'font-size':'8','font-family':'IBM Plex Mono,monospace','dominant-baseline':'middle'},
+    'H='+tH.toFixed(1)));
+  const canGoUp=(nd.parent && nd.id!==effectiveRoot.id);
+  if(canGoUp){
+    centG.style.cursor='pointer';
+    centG.addEventListener('click',(ev)=>{ev.stopPropagation();navigate(nd.parent);});
+    centG.appendChild(tx({'text-anchor':'middle',x:cx,y:cy+17,fill:'#3a4050',
+      'font-size':'7','font-family':'IBM Plex Mono,monospace','dominant-baseline':'middle'},'↑ up'));
+  }
+  svg.appendChild(centG);
+
+  updateParentPanel(nd);
+  updateBc(nd);
+  document.getElementById('btn-up').disabled=!canGoUp;
+  // Hide child panel until a node is tapped
+  document.getElementById('child-sec').style.display='none';
+  const suggSec=document.getElementById('sugg-sec');
+  if(suggSec) suggSec.style.display='flex';
+}
+
+// Show tapped child's stats in the top section of info panel
+// Includes: summary stats, cross-edge list, move suggestions for this child
+function showChildPanel(ch, idx, parentNode){
+  const {total,nH,eH,optEH,intEdges}=subtreeH(ch,tree.byPath,edges);
+  const nLeaves=countLeaves(ch);
+  const waste=Math.max(0,eH-optEH);
+  const wasteCol=waste>1?'var(--red)':waste>0.2?'var(--amber)':'var(--green)';
+  // Cross-subtree edges
+  const xEdges=crossEdges(ch,tree.byPath,edges);
+  const xWasteTotal=xEdges.reduce((s,e)=>s+e.waste,0);
+
+  const sec=document.getElementById('child-sec');
+  sec.style.display='block';
+  // Hide move suggestions panel while child detail is shown
+  const suggSec=document.getElementById('sugg-sec');
+  if(suggSec) suggSec.style.display='none';
+  document.getElementById('child-hd').textContent=ch.name+(ch.isLeaf?' (leaf)':'');
+
+  // Build cross-edge rows (top 8 by waste)
+  const xRows=xEdges.slice(0,8).map(e=>{
+    const fromShort=e.from.split('/').pop();
+    const toShort=e.to.split('/').pop();
+    const wCol=e.waste>0.5?'var(--red)':e.waste>0.1?'var(--amber)':'var(--green)';
+    return `<div class="xe-row" title="${e.from} → ${e.to}">
+      <span class="xe-path">${fromShort}→${toShort}</span>
+      <span class="xe-cost">${e.cost.toFixed(2)}</span>
+      <span class="xe-waste" style="color:${wCol}">+${e.waste.toFixed(2)}</span>
+    </div>`;
+  }).join('');
+
+  // Move suggestions for THIS child specifically
+  const childSuggs=[];
+  if(parentNode){
+    const base=globalH();
+    const targets=[];
+    parentNode.children.forEach(sib=>{if(sib.id!==ch.id&&!sib.isLeaf)targets.push(sib);});
+    if(parentNode.parent) targets.push(parentNode.parent);
+    targets.forEach(tgt=>{
+      const simH=simulateMove(ch,tgt,tree.byPath,edges);
+      const delta=base-simH;
+      if(delta>0.001) childSuggs.push({target:tgt,delta});
+    });
+    childSuggs.sort((a,b)=>b.delta-a.delta);
+  }
+  const suggRows=childSuggs.slice(0,3).map(s=>
+    `<div class="sugg" style="margin-bottom:2px;">
+      <div class="sugg-top"><span class="sugg-name">→ ${s.target.name||'root'}</span>
+      <span class="sugg-delta">−${s.delta.toFixed(3)}</span></div>
+    </div>`
+  ).join('');
+
+  document.getElementById('child-body').innerHTML=`
+    <div class="hbd"><span class="hbk">H total</span><span class="hbv">${total.toFixed(3)}</span></div>
+    <div class="hbd"><span class="hbk">H_node (structure)</span><span class="hbv">${nH.toFixed(3)}</span></div>
+    <div class="hbd"><span class="hbk">H_edge (internal)</span><span class="hbv">${eH.toFixed(3)}</span></div>
+    <div class="hbd"><span class="hbk">H_edge optimal</span><span class="hbv">${optEH.toFixed(3)}</span></div>
+    <div class="hbd"><span class="hbk">edge waste</span><span class="hbv" style="color:${wasteCol}">${waste.toFixed(3)}</span></div>
+    <div class="hbd" style="border-top:1px solid var(--border);margin-top:3px;padding-top:3px;">
+      <span class="hbk">files/nodes</span><span class="hbv">${nLeaves}</span></div>
+    <div class="hbd"><span class="hbk">internal edges</span><span class="hbv">${intEdges.length}</span></div>
+    ${xEdges.length?`
+    <div style="margin-top:6px;margin-bottom:2px;font-size:8px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;">
+      cross-boundary edges (${xEdges.length}) · waste ${xWasteTotal.toFixed(2)}</div>
+    <div class="xe-list">${xRows}${xEdges.length>8?`<div style="font-size:8px;color:var(--dim);padding:2px 0">…+${xEdges.length-8} more</div>`:''}</div>`:''}
+    ${childSuggs.length?`
+    <div style="margin-top:6px;margin-bottom:2px;font-size:8px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;">best moves</div>
+    ${suggRows}`:''}
+    ${!ch.isLeaf?'<div style="margin-top:5px;font-size:8px;color:var(--dim)">double-tap arc → drill in</div>':''}
+  `;
+}
+
+// Update the parent (center) stats section + child list
+function updateParentPanel(nd){
+  const {total,nH,eH,optEH,intEdges}=subtreeH(nd,tree.byPath,edges);
+  const nLeaves=countLeaves(nd);
+  const waste=Math.max(0,eH-optEH);
+  const wasteCol=waste>1?'var(--red)':waste>0.2?'var(--amber)':'var(--green)';
+
+  document.getElementById('parent-hd').textContent=nd.name;
+  document.getElementById('h-val').textContent=total.toFixed(3);
+
+  // Child list (clickable, acts like tapping the arc)
+  const childListHTML=nd.children.map((ch,i)=>{
+    const {total:chH,eH:chEH,optEH:chOpt}=subtreeH(ch,tree.byPath,edges);
+    const chWaste=Math.max(0,chEH-chOpt);
+    const chCol=entropyColor(Math.min(1,nd.children.length>1?chWaste/Math.max(...nd.children.map(c=>{const h=subtreeH(c,tree.byPath,edges);return Math.max(0,h.eH-h.optEH);}),0.001):0));
+    return `<div class="ch-item" data-idx="${i}" style="border-left:3px solid ${chCol}">
+      <span class="ch-name">${ch.name}${ch.isLeaf?' ·':''}</span>
+      <span class="ch-h">${chH.toFixed(2)}</span>
+    </div>`;
+  }).join('');
+
+  document.getElementById('hbd').innerHTML=`
+    <div class="hbd"><span class="hbk">H_node</span><span class="hbv">${nH.toFixed(3)}</span></div>
+    <div class="hbd"><span class="hbk">H_edge current</span><span class="hbv">${eH.toFixed(3)}</span></div>
+    <div class="hbd"><span class="hbk">H_edge optimal</span><span class="hbv">${optEH.toFixed(3)}</span></div>
+    <div class="hbd"><span class="hbk">edge waste</span><span class="hbv" style="color:${wasteCol}">${waste.toFixed(3)}</span></div>
+    <div class="hbd" style="border-top:1px solid var(--border);margin-top:3px;padding-top:3px;">
+      <span class="hbk">files</span><span class="hbv">${nLeaves}</span></div>
+    <div class="hbd"><span class="hbk">edges</span><span class="hbv">${intEdges.length}</span></div>
+    <div style="margin-top:6px;margin-bottom:2px;font-size:8px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;">children</div>
+    <div class="ch-list" id="ch-list">${childListHTML}</div>
+  `;
+
+  // Wire child list clicks
+  document.getElementById('ch-list')?.querySelectorAll('.ch-item').forEach(item=>{
+    item.addEventListener('click',()=>{
+      const idx=parseInt(item.dataset.idx);
+      const ch=nd.children[idx];
+      if(ch){
+        // Highlight arc in SVG
+        const svg=document.getElementById('viz-svg');
+        svg.querySelectorAll('path[data-from]').forEach(p=>{
+          const from=parseInt(p.getAttribute('data-from'));
+          const to=parseInt(p.getAttribute('data-to'));
+          const conn=(from===idx||to===idx);
+          const origSw=parseFloat(p.getAttribute('data-sw'));
+          p.setAttribute('stroke-width', conn?(origSw*2).toFixed(2):'0.4');
+          p.setAttribute('opacity', conn?'0.9':'0.08');
+        });
+        svg.querySelectorAll('g[data-idx]').forEach(gr=>{
+          gr.querySelector('path')?.setAttribute('opacity',parseInt(gr.getAttribute('data-idx'))===idx?'1':'0.35');
+        });
+        showChildPanel(ch, idx, nd);
+      }
+    });
+  });
+
+  // Move suggestions for parent
+  const suggs=suggestions(nd,tree.byPath,edges);
+  const sl=document.getElementById('sugg-list');
+  if(!suggs.length){
+    sl.innerHTML='<div style="color:var(--muted);font-size:9px;font-style:italic">no improvements found</div>';
+    return;
+  }
+  sl.innerHTML=suggs.map(s=>`<div class="sugg">
+    <div class="sugg-top">
+      <span class="sugg-name" title="${s.node.path}">${s.node.name}</span>
+      <span class="sugg-delta">−${s.delta.toFixed(3)}</span>
+    </div>
+    <div class="sugg-desc">→ ${s.target.name||'root'}</div>
+  </div>`).join('');
+}
+
+function updateBc(nd){
+  const parts=[];let n=nd;while(n){parts.unshift(n);n=n.parent;}
+  const bc=document.getElementById('bc');
+  bc.innerHTML=parts.map((p,i)=>{
+    const last=i===parts.length-1;
+    // Use the repo name for root (id==='')
+    const lbl=p.id===''?tree.root.name:p.name;
+    return`<span class="crumb${last?' active':''}" data-id="${p.id}">${lbl}</span>${last?'':'<span class="sep">/</span>'}`;
+  }).join('');
+  bc.querySelectorAll('.crumb:not(.active)').forEach(e=>e.addEventListener('click',()=>{
+    const nd2=e.dataset.id===''?tree.root:tree.byPath[e.dataset.id];
+    if(nd2){ 
+      document.getElementById('child-sec').style.display='none';
+      const ss=document.getElementById('sugg-sec');if(ss)ss.style.display='flex';
+      navigate(nd2);
+    }
+  }));
+}
+
+function navigate(nd){if(!tree)return;render(nd);}
+
+// ═══════════════════════════════════════════
+// LOAD
+// ═══════════════════════════════════════════
+function load(dotSrc, repoLabel){
+  const {nodes:ns,edges:es}=parseDot(dotSrc);
+  if(!ns.length){alert('No nodes found — check DOT format');return;}
+  const t=buildTree(ns,es);
+  // Name the root after the repo, not 'root'
+  t.root.name=repoLabel;
+  tree=t; edges=es.filter(e=>t.byPath[e.from]&&t.byPath[e.to]);
+  document.getElementById('empty').style.display='none';
+  document.getElementById('viz-svg').style.display='block';
+  document.getElementById('repo-chip').textContent=repoLabel;
+  document.getElementById('child-sec').style.display='none';
+  // stats
+  let nc=0,depth=0;
+  (function countW(n,d){nc++;depth=Math.max(depth,d);n.children.forEach(c=>countW(c,d+1));})(t.root,0);
+  document.getElementById('sn').textContent=nc;
+  document.getElementById('se').textContent=edges.length;
+  document.getElementById('sd').textContent=depth;
+  document.getElementById('sh').textContent=globalH().toFixed(2);
+  // Skip single-child pass-through levels so we start at the first interesting level
+  let startNode=t.root;
+  while(startNode.children.length===1 && !startNode.isLeaf) startNode=startNode.children[0];
+  selected=startNode; navigate(startNode);
+  setTimeout(()=>render(selected),40);
+}
+
+window.addEventListener('resize',()=>{ if(selected&&tree) render(selected); });
+
+// ── File drop ────────────────────────────
+const dz=document.getElementById('dropzone');
+const fi=document.getElementById('file-in');
+dz.addEventListener('click',()=>fi.click());
+dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag');});
+dz.addEventListener('dragleave',()=>dz.classList.remove('drag'));
+dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('drag');const f=e.dataTransfer.files[0];if(f){const r=new FileReader();r.onload=ev=>load(ev.target.result,f.name);r.readAsText(f);}});
+fi.addEventListener('change',()=>{const f=fi.files[0];if(f){const r=new FileReader();r.onload=ev=>load(ev.target.result,f.name.replace(/\.(dot|gv)$/,''));r.readAsText(f);}});
+
+document.getElementById('btn-up').addEventListener('click',()=>{
+  if(selected&&selected.parent){
+    document.getElementById('child-sec').style.display='none';
+    const ss=document.getElementById('sugg-sec');if(ss)ss.style.display='flex';
+    navigate(selected.parent);
+  }
+});
+document.getElementById('btn-reset').addEventListener('click',()=>{
+  if(!tree) return;
+  let startNode=tree.root;
+  while(startNode.children.length===1&&!startNode.isLeaf) startNode=startNode.children[0];
+  document.getElementById('child-sec').style.display='none';
+  const ss=document.getElementById('sugg-sec');if(ss)ss.style.display='flex';
+  navigate(startNode);
+});
+document.getElementById('btn-sb').addEventListener('click',()=>{
+  const sb=document.getElementById('sidebar');
+  if(window.innerWidth<=700){ sb.classList.toggle('open'); }
+  else { sb.classList.toggle('collapsed'); }
+});
+document.getElementById('w-slider').addEventListener('input',function(){
+  W=parseFloat(this.value);
+  document.getElementById('w-val').textContent=W.toFixed(1);
+  if(selected&&tree){
+    document.getElementById('child-sec').style.display='none';
+    const ss=document.getElementById('sugg-sec');if(ss)ss.style.display='flex';
+    render(selected);
+  }
+});
+
+// ── Presets ──────────────────────────────
+const P={
+numpy:`digraph numpy {
+"numpy/__init__.py" -> "numpy/core/__init__.py"
+"numpy/__init__.py" -> "numpy/lib/__init__.py"
+"numpy/__init__.py" -> "numpy/linalg/__init__.py"
+"numpy/__init__.py" -> "numpy/fft/__init__.py"
+"numpy/__init__.py" -> "numpy/random/__init__.py"
+"numpy/__init__.py" -> "numpy/ma/__init__.py"
+"numpy/__init__.py" -> "numpy/testing/__init__.py"
+"numpy/core/__init__.py" -> "numpy/core/multiarray.py"
+"numpy/core/__init__.py" -> "numpy/core/numeric.py"
+"numpy/core/__init__.py" -> "numpy/core/fromnumeric.py"
+"numpy/core/__init__.py" -> "numpy/core/arrayprint.py"
+"numpy/core/__init__.py" -> "numpy/core/defchararray.py"
+"numpy/core/__init__.py" -> "numpy/core/records.py"
+"numpy/core/__init__.py" -> "numpy/core/function_base.py"
+"numpy/core/__init__.py" -> "numpy/core/shape_base.py"
+"numpy/core/__init__.py" -> "numpy/core/einsumfunc.py"
+"numpy/core/__init__.py" -> "numpy/core/_type_aliases.py"
+"numpy/core/__init__.py" -> "numpy/core/overrides.py"
+"numpy/core/numeric.py" -> "numpy/core/multiarray.py"
+"numpy/core/numeric.py" -> "numpy/core/_type_aliases.py"
+"numpy/core/fromnumeric.py" -> "numpy/core/multiarray.py"
+"numpy/core/fromnumeric.py" -> "numpy/core/numeric.py"
+"numpy/core/fromnumeric.py" -> "numpy/core/overrides.py"
+"numpy/core/arrayprint.py" -> "numpy/core/multiarray.py"
+"numpy/core/arrayprint.py" -> "numpy/core/numeric.py"
+"numpy/core/arrayprint.py" -> "numpy/core/fromnumeric.py"
+"numpy/core/shape_base.py" -> "numpy/core/numeric.py"
+"numpy/core/shape_base.py" -> "numpy/core/overrides.py"
+"numpy/core/einsumfunc.py" -> "numpy/core/multiarray.py"
+"numpy/core/einsumfunc.py" -> "numpy/core/numeric.py"
+"numpy/core/overrides.py" -> "numpy/core/multiarray.py"
+"numpy/lib/__init__.py" -> "numpy/lib/arraysetops.py"
+"numpy/lib/__init__.py" -> "numpy/lib/function_base.py"
+"numpy/lib/__init__.py" -> "numpy/lib/index_tricks.py"
+"numpy/lib/__init__.py" -> "numpy/lib/nanfunctions.py"
+"numpy/lib/__init__.py" -> "numpy/lib/npyio.py"
+"numpy/lib/__init__.py" -> "numpy/lib/polynomial.py"
+"numpy/lib/__init__.py" -> "numpy/lib/shape_base.py"
+"numpy/lib/__init__.py" -> "numpy/lib/stride_tricks.py"
+"numpy/lib/__init__.py" -> "numpy/lib/twodim_base.py"
+"numpy/lib/__init__.py" -> "numpy/lib/type_check.py"
+"numpy/lib/__init__.py" -> "numpy/lib/ufunclike.py"
+"numpy/lib/__init__.py" -> "numpy/lib/utils.py"
+"numpy/lib/function_base.py" -> "numpy/core/numeric.py"
+"numpy/lib/function_base.py" -> "numpy/core/overrides.py"
+"numpy/lib/function_base.py" -> "numpy/lib/twodim_base.py"
+"numpy/lib/nanfunctions.py" -> "numpy/core/numeric.py"
+"numpy/lib/nanfunctions.py" -> "numpy/lib/function_base.py"
+"numpy/lib/nanfunctions.py" -> "numpy/core/overrides.py"
+"numpy/lib/shape_base.py" -> "numpy/core/numeric.py"
+"numpy/lib/shape_base.py" -> "numpy/core/shape_base.py"
+"numpy/lib/index_tricks.py" -> "numpy/core/numeric.py"
+"numpy/lib/stride_tricks.py" -> "numpy/core/numeric.py"
+"numpy/lib/stride_tricks.py" -> "numpy/core/overrides.py"
+"numpy/lib/type_check.py" -> "numpy/core/multiarray.py"
+"numpy/lib/type_check.py" -> "numpy/core/numeric.py"
+"numpy/lib/ufunclike.py" -> "numpy/core/numeric.py"
+"numpy/lib/ufunclike.py" -> "numpy/lib/type_check.py"
+"numpy/lib/utils.py" -> "numpy/core/numeric.py"
+"numpy/lib/polynomial.py" -> "numpy/core/numeric.py"
+"numpy/lib/polynomial.py" -> "numpy/lib/function_base.py"
+"numpy/lib/twodim_base.py" -> "numpy/core/numeric.py"
+"numpy/lib/npyio.py" -> "numpy/core/numeric.py"
+"numpy/lib/npyio.py" -> "numpy/lib/utils.py"
+"numpy/lib/arraysetops.py" -> "numpy/core/numeric.py"
+"numpy/linalg/__init__.py" -> "numpy/linalg/linalg.py"
+"numpy/linalg/__init__.py" -> "numpy/linalg/lapack_lite.py"
+"numpy/linalg/linalg.py" -> "numpy/core/multiarray.py"
+"numpy/linalg/linalg.py" -> "numpy/core/numeric.py"
+"numpy/linalg/linalg.py" -> "numpy/linalg/lapack_lite.py"
+"numpy/fft/__init__.py" -> "numpy/fft/helper.py"
+"numpy/fft/__init__.py" -> "numpy/fft/pocketfft.py"
+"numpy/fft/pocketfft.py" -> "numpy/core/multiarray.py"
+"numpy/fft/pocketfft.py" -> "numpy/core/numeric.py"
+"numpy/fft/helper.py" -> "numpy/core/numeric.py"
+"numpy/random/__init__.py" -> "numpy/random/_common.py"
+"numpy/random/__init__.py" -> "numpy/random/_bounded_integers.py"
+"numpy/random/__init__.py" -> "numpy/random/mtrand.py"
+"numpy/random/__init__.py" -> "numpy/random/_generator.py"
+"numpy/random/__init__.py" -> "numpy/random/_pcg64.py"
+"numpy/random/__init__.py" -> "numpy/random/bit_generator.py"
+"numpy/random/_generator.py" -> "numpy/random/_common.py"
+"numpy/random/_generator.py" -> "numpy/random/bit_generator.py"
+"numpy/random/mtrand.py" -> "numpy/random/_common.py"
+"numpy/random/_common.py" -> "numpy/core/multiarray.py"
+"numpy/random/bit_generator.py" -> "numpy/core/multiarray.py"
+"numpy/ma/__init__.py" -> "numpy/ma/core.py"
+"numpy/ma/__init__.py" -> "numpy/ma/extras.py"
+"numpy/ma/__init__.py" -> "numpy/ma/mrecords.py"
+"numpy/ma/core.py" -> "numpy/core/numeric.py"
+"numpy/ma/core.py" -> "numpy/core/multiarray.py"
+"numpy/ma/core.py" -> "numpy/core/overrides.py"
+"numpy/ma/extras.py" -> "numpy/ma/core.py"
+"numpy/ma/extras.py" -> "numpy/core/numeric.py"
+"numpy/ma/mrecords.py" -> "numpy/ma/core.py"
+"numpy/testing/__init__.py" -> "numpy/testing/_private/utils.py"
+"numpy/testing/_private/utils.py" -> "numpy/core/numeric.py"
+"numpy/testing/_private/utils.py" -> "numpy/core/fromnumeric.py"
+}`,
+pandas:`digraph pandas {
+"pandas/__init__.py" -> "pandas/core/api.py"
+"pandas/__init__.py" -> "pandas/io/api.py"
+"pandas/__init__.py" -> "pandas/tseries/api.py"
+"pandas/__init__.py" -> "pandas/plotting/__init__.py"
+"pandas/core/api.py" -> "pandas/core/frame.py"
+"pandas/core/api.py" -> "pandas/core/series.py"
+"pandas/core/api.py" -> "pandas/core/indexes/api.py"
+"pandas/core/api.py" -> "pandas/core/arrays/api.py"
+"pandas/core/api.py" -> "pandas/core/dtypes/api.py"
+"pandas/core/frame.py" -> "pandas/core/generic.py"
+"pandas/core/frame.py" -> "pandas/core/internals/managers.py"
+"pandas/core/frame.py" -> "pandas/core/indexes/api.py"
+"pandas/core/frame.py" -> "pandas/core/series.py"
+"pandas/core/frame.py" -> "pandas/core/dtypes/cast.py"
+"pandas/core/frame.py" -> "pandas/core/ops/__init__.py"
+"pandas/core/series.py" -> "pandas/core/generic.py"
+"pandas/core/series.py" -> "pandas/core/internals/managers.py"
+"pandas/core/series.py" -> "pandas/core/indexes/api.py"
+"pandas/core/series.py" -> "pandas/core/ops/__init__.py"
+"pandas/core/series.py" -> "pandas/core/arrays/api.py"
+"pandas/core/generic.py" -> "pandas/core/indexing.py"
+"pandas/core/generic.py" -> "pandas/core/missing.py"
+"pandas/core/generic.py" -> "pandas/core/dtypes/common.py"
+"pandas/core/generic.py" -> "pandas/core/internals/managers.py"
+"pandas/core/indexing.py" -> "pandas/core/indexes/api.py"
+"pandas/core/indexing.py" -> "pandas/core/dtypes/common.py"
+"pandas/core/internals/managers.py" -> "pandas/core/internals/blocks.py"
+"pandas/core/internals/managers.py" -> "pandas/core/dtypes/cast.py"
+"pandas/core/internals/blocks.py" -> "pandas/core/dtypes/common.py"
+"pandas/core/internals/blocks.py" -> "pandas/core/arrays/api.py"
+"pandas/core/indexes/api.py" -> "pandas/core/indexes/base.py"
+"pandas/core/indexes/api.py" -> "pandas/core/indexes/range.py"
+"pandas/core/indexes/api.py" -> "pandas/core/indexes/datetimes.py"
+"pandas/core/indexes/api.py" -> "pandas/core/indexes/multi.py"
+"pandas/core/indexes/base.py" -> "pandas/core/dtypes/common.py"
+"pandas/core/indexes/base.py" -> "pandas/core/ops/__init__.py"
+"pandas/core/indexes/datetimes.py" -> "pandas/core/indexes/base.py"
+"pandas/core/indexes/datetimes.py" -> "pandas/core/arrays/datetimes.py"
+"pandas/core/indexes/multi.py" -> "pandas/core/indexes/base.py"
+"pandas/core/arrays/api.py" -> "pandas/core/arrays/categorical.py"
+"pandas/core/arrays/api.py" -> "pandas/core/arrays/datetimes.py"
+"pandas/core/arrays/api.py" -> "pandas/core/arrays/integer.py"
+"pandas/core/arrays/api.py" -> "pandas/core/arrays/string_.py"
+"pandas/core/arrays/categorical.py" -> "pandas/core/dtypes/common.py"
+"pandas/core/arrays/categorical.py" -> "pandas/core/ops/__init__.py"
+"pandas/core/arrays/datetimes.py" -> "pandas/core/dtypes/common.py"
+"pandas/core/arrays/integer.py" -> "pandas/core/arrays/masked.py"
+"pandas/core/arrays/string_.py" -> "pandas/core/arrays/masked.py"
+"pandas/core/arrays/masked.py" -> "pandas/core/dtypes/common.py"
+"pandas/core/dtypes/cast.py" -> "pandas/core/dtypes/common.py"
+"pandas/core/dtypes/cast.py" -> "pandas/core/dtypes/dtypes.py"
+"pandas/core/dtypes/common.py" -> "pandas/core/dtypes/dtypes.py"
+"pandas/core/ops/__init__.py" -> "pandas/core/ops/array_ops.py"
+"pandas/core/ops/__init__.py" -> "pandas/core/ops/docstrings.py"
+"pandas/core/ops/array_ops.py" -> "pandas/core/dtypes/common.py"
+"pandas/core/missing.py" -> "pandas/core/dtypes/common.py"
+"pandas/core/missing.py" -> "pandas/core/arrays/api.py"
+"pandas/io/api.py" -> "pandas/io/parsers/readers.py"
+"pandas/io/api.py" -> "pandas/io/excel/_base.py"
+"pandas/io/api.py" -> "pandas/io/json/_json.py"
+"pandas/io/api.py" -> "pandas/io/sql.py"
+"pandas/io/parsers/readers.py" -> "pandas/core/frame.py"
+"pandas/io/parsers/readers.py" -> "pandas/io/common.py"
+"pandas/io/excel/_base.py" -> "pandas/core/frame.py"
+"pandas/io/excel/_base.py" -> "pandas/io/common.py"
+"pandas/io/json/_json.py" -> "pandas/core/frame.py"
+"pandas/io/sql.py" -> "pandas/core/frame.py"
+"pandas/io/common.py" -> "pandas/core/dtypes/common.py"
+"pandas/tseries/api.py" -> "pandas/tseries/frequencies.py"
+"pandas/tseries/api.py" -> "pandas/tseries/offsets.py"
+"pandas/tseries/frequencies.py" -> "pandas/core/indexes/datetimes.py"
+"pandas/tseries/offsets.py" -> "pandas/core/indexes/datetimes.py"
+"pandas/plotting/__init__.py" -> "pandas/plotting/_matplotlib/__init__.py"
+"pandas/plotting/_matplotlib/__init__.py" -> "pandas/core/frame.py"
+}`,
+scipy:`digraph scipy {
+"scipy/sparse/__init__.py" -> "scipy/sparse/_base.py"
+"scipy/sparse/__init__.py" -> "scipy/sparse/compressed.py"
+"scipy/sparse/__init__.py" -> "scipy/sparse/coo.py"
+"scipy/sparse/__init__.py" -> "scipy/sparse/csc.py"
+"scipy/sparse/__init__.py" -> "scipy/sparse/csr.py"
+"scipy/sparse/__init__.py" -> "scipy/sparse/dia.py"
+"scipy/sparse/__init__.py" -> "scipy/sparse/dok.py"
+"scipy/sparse/__init__.py" -> "scipy/sparse/lil.py"
+"scipy/sparse/__init__.py" -> "scipy/sparse/linalg/__init__.py"
+"scipy/sparse/__init__.py" -> "scipy/sparse/csgraph/__init__.py"
+"scipy/sparse/_base.py" -> "scipy/sparse/sputils.py"
+"scipy/sparse/compressed.py" -> "scipy/sparse/_base.py"
+"scipy/sparse/compressed.py" -> "scipy/sparse/sputils.py"
+"scipy/sparse/coo.py" -> "scipy/sparse/_base.py"
+"scipy/sparse/coo.py" -> "scipy/sparse/sputils.py"
+"scipy/sparse/csc.py" -> "scipy/sparse/compressed.py"
+"scipy/sparse/csr.py" -> "scipy/sparse/compressed.py"
+"scipy/sparse/csr.py" -> "scipy/sparse/csc.py"
+"scipy/sparse/dia.py" -> "scipy/sparse/_base.py"
+"scipy/sparse/dok.py" -> "scipy/sparse/_base.py"
+"scipy/sparse/dok.py" -> "scipy/sparse/coo.py"
+"scipy/sparse/lil.py" -> "scipy/sparse/_base.py"
+"scipy/sparse/lil.py" -> "scipy/sparse/csr.py"
+"scipy/sparse/linalg/__init__.py" -> "scipy/sparse/linalg/_dsolve/__init__.py"
+"scipy/sparse/linalg/__init__.py" -> "scipy/sparse/linalg/_eigen/__init__.py"
+"scipy/sparse/linalg/__init__.py" -> "scipy/sparse/linalg/isolve/__init__.py"
+"scipy/sparse/linalg/__init__.py" -> "scipy/sparse/linalg/interface.py"
+"scipy/sparse/linalg/interface.py" -> "scipy/sparse/_base.py"
+"scipy/sparse/linalg/isolve/__init__.py" -> "scipy/sparse/linalg/interface.py"
+"scipy/sparse/linalg/_dsolve/__init__.py" -> "scipy/sparse/csc.py"
+"scipy/sparse/linalg/_eigen/__init__.py" -> "scipy/sparse/linalg/interface.py"
+"scipy/sparse/csgraph/__init__.py" -> "scipy/sparse/csr.py"
+"scipy/sparse/csgraph/__init__.py" -> "scipy/sparse/csc.py"
+}`,
+flask:`digraph flask {
+"flask/__init__.py" -> "flask/app.py"
+"flask/__init__.py" -> "flask/blueprints.py"
+"flask/__init__.py" -> "flask/globals.py"
+"flask/__init__.py" -> "flask/helpers.py"
+"flask/__init__.py" -> "flask/templating.py"
+"flask/__init__.py" -> "flask/wrappers.py"
+"flask/__init__.py" -> "flask/cli.py"
+"flask/__init__.py" -> "flask/json/__init__.py"
+"flask/app.py" -> "flask/ctx.py"
+"flask/app.py" -> "flask/globals.py"
+"flask/app.py" -> "flask/helpers.py"
+"flask/app.py" -> "flask/logging.py"
+"flask/app.py" -> "flask/signals.py"
+"flask/app.py" -> "flask/templating.py"
+"flask/app.py" -> "flask/testing.py"
+"flask/app.py" -> "flask/wrappers.py"
+"flask/app.py" -> "flask/sansio/app.py"
+"flask/blueprints.py" -> "flask/app.py"
+"flask/blueprints.py" -> "flask/globals.py"
+"flask/blueprints.py" -> "flask/helpers.py"
+"flask/blueprints.py" -> "flask/sansio/blueprints.py"
+"flask/ctx.py" -> "flask/globals.py"
+"flask/ctx.py" -> "flask/signals.py"
+"flask/ctx.py" -> "flask/wrappers.py"
+"flask/globals.py" -> "flask/ctx.py"
+"flask/helpers.py" -> "flask/globals.py"
+"flask/helpers.py" -> "flask/ctx.py"
+"flask/helpers.py" -> "flask/signals.py"
+"flask/templating.py" -> "flask/globals.py"
+"flask/templating.py" -> "flask/helpers.py"
+"flask/templating.py" -> "flask/signals.py"
+"flask/testing.py" -> "flask/app.py"
+"flask/testing.py" -> "flask/ctx.py"
+"flask/testing.py" -> "flask/globals.py"
+"flask/wrappers.py" -> "flask/globals.py"
+"flask/wrappers.py" -> "flask/helpers.py"
+"flask/cli.py" -> "flask/app.py"
+"flask/cli.py" -> "flask/globals.py"
+"flask/views.py" -> "flask/app.py"
+"flask/views.py" -> "flask/globals.py"
+"flask/json/__init__.py" -> "flask/globals.py"
+"flask/json/__init__.py" -> "flask/json/provider.py"
+"flask/json/provider.py" -> "flask/json/__init__.py"
+"flask/sansio/app.py" -> "flask/sansio/scaffold.py"
+"flask/sansio/scaffold.py" -> "flask/helpers.py"
+"flask/sansio/blueprints.py" -> "flask/sansio/scaffold.py"
+}`,
+django:`digraph django {
+"django/__init__.py" -> "django/conf/__init__.py"
+"django/__init__.py" -> "django/utils/version.py"
+"django/conf/__init__.py" -> "django/conf/global_settings.py"
+"django/conf/__init__.py" -> "django/utils/functional.py"
+"django/core/handlers/base.py" -> "django/core/exceptions.py"
+"django/core/handlers/base.py" -> "django/core/signals.py"
+"django/core/handlers/base.py" -> "django/utils/module_loading.py"
+"django/core/handlers/wsgi.py" -> "django/core/handlers/base.py"
+"django/core/handlers/wsgi.py" -> "django/core/exceptions.py"
+"django/core/handlers/asgi.py" -> "django/core/handlers/base.py"
+"django/core/handlers/exception.py" -> "django/core/exceptions.py"
+"django/core/handlers/exception.py" -> "django/core/signals.py"
+"django/db/models/__init__.py" -> "django/db/models/base.py"
+"django/db/models/__init__.py" -> "django/db/models/fields/__init__.py"
+"django/db/models/__init__.py" -> "django/db/models/manager.py"
+"django/db/models/__init__.py" -> "django/db/models/query.py"
+"django/db/models/__init__.py" -> "django/db/models/signals.py"
+"django/db/models/base.py" -> "django/db/models/fields/__init__.py"
+"django/db/models/base.py" -> "django/db/models/manager.py"
+"django/db/models/base.py" -> "django/db/models/signals.py"
+"django/db/models/base.py" -> "django/db/models/options.py"
+"django/db/models/base.py" -> "django/db/backends/base/schema.py"
+"django/db/models/manager.py" -> "django/db/models/query.py"
+"django/db/models/manager.py" -> "django/utils/functional.py"
+"django/db/models/query.py" -> "django/db/models/base.py"
+"django/db/models/query.py" -> "django/db/models/fields/__init__.py"
+"django/db/models/query.py" -> "django/db/models/sql/query.py"
+"django/db/models/sql/query.py" -> "django/db/models/fields/__init__.py"
+"django/db/models/sql/query.py" -> "django/db/models/sql/compiler.py"
+"django/db/models/sql/compiler.py" -> "django/db/models/sql/query.py"
+"django/db/models/fields/__init__.py" -> "django/db/models/base.py"
+"django/db/models/options.py" -> "django/db/models/fields/__init__.py"
+"django/db/backends/base/base.py" -> "django/db/utils.py"
+"django/db/backends/base/schema.py" -> "django/db/backends/base/base.py"
+"django/db/backends/sqlite3/base.py" -> "django/db/backends/base/base.py"
+"django/db/backends/sqlite3/schema.py" -> "django/db/backends/base/schema.py"
+"django/db/backends/postgresql/base.py" -> "django/db/backends/base/base.py"
+"django/db/backends/postgresql/schema.py" -> "django/db/backends/base/schema.py"
+"django/urls/resolvers.py" -> "django/urls/converters.py"
+"django/urls/resolvers.py" -> "django/core/exceptions.py"
+"django/urls/resolvers.py" -> "django/utils/functional.py"
+"django/urls/conf.py" -> "django/urls/resolvers.py"
+"django/template/base.py" -> "django/template/context.py"
+"django/template/context.py" -> "django/template/base.py"
+"django/template/engine.py" -> "django/template/base.py"
+"django/template/loaders/filesystem.py" -> "django/template/base.py"
+"django/template/loaders/cached.py" -> "django/template/loaders/filesystem.py"
+"django/contrib/auth/models.py" -> "django/db/models/base.py"
+"django/contrib/auth/views.py" -> "django/contrib/auth/models.py"
+"django/contrib/auth/decorators.py" -> "django/contrib/auth/views.py"
+"django/contrib/admin/sites.py" -> "django/contrib/auth/models.py"
+"django/contrib/admin/sites.py" -> "django/urls/conf.py"
+"django/contrib/admin/options.py" -> "django/contrib/admin/sites.py"
+"django/contrib/admin/options.py" -> "django/db/models/base.py"
+"django/utils/functional.py" -> "django/utils/version.py"
+"django/utils/module_loading.py" -> "django/utils/functional.py"
+}`,
+fastapi:`digraph fastapi {
+"fastapi/__init__.py" -> "fastapi/applications.py"
+"fastapi/__init__.py" -> "fastapi/routing.py"
+"fastapi/__init__.py" -> "fastapi/param_functions.py"
+"fastapi/__init__.py" -> "fastapi/exception_handlers.py"
+"fastapi/__init__.py" -> "fastapi/middleware/__init__.py"
+"fastapi/applications.py" -> "fastapi/routing.py"
+"fastapi/applications.py" -> "fastapi/exception_handlers.py"
+"fastapi/applications.py" -> "fastapi/middleware/__init__.py"
+"fastapi/routing.py" -> "fastapi/dependencies/utils.py"
+"fastapi/routing.py" -> "fastapi/encoders.py"
+"fastapi/routing.py" -> "fastapi/exceptions.py"
+"fastapi/routing.py" -> "fastapi/openapi/utils.py"
+"fastapi/routing.py" -> "fastapi/utils.py"
+"fastapi/dependencies/utils.py" -> "fastapi/dependencies/models.py"
+"fastapi/dependencies/utils.py" -> "fastapi/encoders.py"
+"fastapi/dependencies/utils.py" -> "fastapi/exceptions.py"
+"fastapi/dependencies/utils.py" -> "fastapi/params.py"
+"fastapi/dependencies/utils.py" -> "fastapi/security/base.py"
+"fastapi/openapi/utils.py" -> "fastapi/openapi/models.py"
+"fastapi/openapi/utils.py" -> "fastapi/routing.py"
+"fastapi/openapi/utils.py" -> "fastapi/utils.py"
+"fastapi/param_functions.py" -> "fastapi/params.py"
+"fastapi/security/base.py" -> "fastapi/params.py"
+"fastapi/security/oauth2.py" -> "fastapi/security/base.py"
+"fastapi/security/http.py" -> "fastapi/security/base.py"
+"fastapi/security/api_key.py" -> "fastapi/security/base.py"
+"fastapi/middleware/__init__.py" -> "fastapi/middleware/cors.py"
+"fastapi/middleware/__init__.py" -> "fastapi/middleware/httpsredirect.py"
+"fastapi/encoders.py" -> "fastapi/utils.py"
+"fastapi/exception_handlers.py" -> "fastapi/exceptions.py"
+"fastapi/exceptions.py" -> "fastapi/params.py"
+}`,
+linux:`digraph linux {
+"fs/inode.c" -> "fs/dcache.c"
+"fs/inode.c" -> "fs/super.c"
+"fs/inode.c" -> "include/linux/fs.h"
+"fs/dcache.c" -> "fs/namei.c"
+"fs/dcache.c" -> "fs/super.c"
+"fs/dcache.c" -> "include/linux/fs.h"
+"fs/namei.c" -> "fs/inode.c"
+"fs/namei.c" -> "fs/open.c"
+"fs/namei.c" -> "include/linux/fs.h"
+"fs/open.c" -> "fs/read_write.c"
+"fs/open.c" -> "fs/attr.c"
+"fs/open.c" -> "include/linux/fs.h"
+"fs/read_write.c" -> "fs/inode.c"
+"fs/read_write.c" -> "fs/file.c"
+"fs/read_write.c" -> "include/linux/fs.h"
+"fs/file.c" -> "fs/inode.c"
+"fs/file.c" -> "fs/super.c"
+"fs/attr.c" -> "fs/inode.c"
+"fs/super.c" -> "fs/inode.c"
+"fs/super.c" -> "include/linux/fs.h"
+"fs/ext4/inode.c" -> "fs/ext4/super.c"
+"fs/ext4/inode.c" -> "fs/ext4/ext4.h"
+"fs/ext4/inode.c" -> "fs/inode.c"
+"fs/ext4/super.c" -> "fs/ext4/ext4.h"
+"fs/ext4/super.c" -> "fs/super.c"
+"fs/ext4/file.c" -> "fs/ext4/inode.c"
+"fs/ext4/file.c" -> "fs/ext4/ext4.h"
+"fs/ext4/namei.c" -> "fs/ext4/inode.c"
+"fs/ext4/namei.c" -> "fs/namei.c"
+"fs/ext4/dir.c" -> "fs/ext4/ext4.h"
+"fs/ext4/dir.c" -> "fs/dcache.c"
+"fs/ext4/mballoc.c" -> "fs/ext4/ext4.h"
+"fs/ext4/mballoc.c" -> "fs/ext4/super.c"
+"fs/ext4/journal.c" -> "fs/ext4/ext4.h"
+"fs/xfs/xfs_inode.c" -> "fs/xfs/xfs.h"
+"fs/xfs/xfs_super.c" -> "fs/xfs/xfs.h"
+"fs/xfs/xfs_super.c" -> "fs/super.c"
+"fs/xfs/xfs_file.c" -> "fs/xfs/xfs_inode.c"
+"fs/xfs/xfs_dir2.c" -> "fs/xfs/xfs.h"
+"fs/xfs/xfs_dir2.c" -> "fs/dcache.c"
+"fs/xfs/xfs_log.c" -> "fs/xfs/xfs.h"
+"fs/btrfs/inode.c" -> "fs/btrfs/btrfs.h"
+"fs/btrfs/super.c" -> "fs/super.c"
+"fs/btrfs/super.c" -> "fs/btrfs/btrfs.h"
+"fs/btrfs/file.c" -> "fs/btrfs/inode.c"
+"fs/btrfs/ctree.c" -> "fs/btrfs/btrfs.h"
+"fs/btrfs/transaction.c" -> "fs/btrfs/btrfs.h"
+"fs/btrfs/volumes.c" -> "fs/btrfs/btrfs.h"
+"fs/proc/inode.c" -> "fs/inode.c"
+"fs/proc/root.c" -> "fs/proc/inode.c"
+"fs/proc/generic.c" -> "fs/proc/inode.c"
+"fs/proc/task_mmu.c" -> "include/linux/fs.h"
+"mm/memory.c" -> "include/linux/fs.h"
+"mm/filemap.c" -> "fs/inode.c"
+"mm/filemap.c" -> "include/linux/fs.h"
+"kernel/sched/core.c" -> "include/linux/fs.h"
+"include/linux/fs.h" -> "include/linux/types.h"
+}`,
+react:`digraph react {
+"packages/react-dom/src/client/ReactDOM.js" -> "packages/react-dom/src/client/ReactDOMRoot.js"
+"packages/react-dom/src/client/ReactDOM.js" -> "packages/react-dom/src/events/ReactDOMEventListener.js"
+"packages/react-dom/src/client/ReactDOMRoot.js" -> "packages/react-reconciler/src/ReactFiberReconciler.js"
+"packages/react-dom/src/client/ReactDOMRoot.js" -> "packages/react-dom/src/client/ReactDOMComponent.js"
+"packages/react-reconciler/src/ReactFiberReconciler.js" -> "packages/react-reconciler/src/ReactFiber.js"
+"packages/react-reconciler/src/ReactFiberReconciler.js" -> "packages/react-reconciler/src/ReactFiberScheduler.js"
+"packages/react-reconciler/src/ReactFiber.js" -> "packages/react-reconciler/src/ReactFiberFlags.js"
+"packages/react-reconciler/src/ReactFiber.js" -> "packages/react-reconciler/src/ReactWorkTags.js"
+"packages/react-reconciler/src/ReactFiberScheduler.js" -> "packages/react-reconciler/src/ReactFiber.js"
+"packages/react-reconciler/src/ReactFiberScheduler.js" -> "packages/react-reconciler/src/ReactFiberWorkLoop.js"
+"packages/react-reconciler/src/ReactFiberWorkLoop.js" -> "packages/react-reconciler/src/ReactFiber.js"
+"packages/react-reconciler/src/ReactFiberWorkLoop.js" -> "packages/react-reconciler/src/ReactFiberCommitWork.js"
+"packages/react-reconciler/src/ReactFiberWorkLoop.js" -> "packages/react-reconciler/src/ReactFiberCompleteWork.js"
+"packages/react-reconciler/src/ReactFiberCommitWork.js" -> "packages/react-dom/src/client/ReactDOMComponent.js"
+"packages/react-reconciler/src/ReactFiberCommitWork.js" -> "packages/react-reconciler/src/ReactFiber.js"
+"packages/react-reconciler/src/ReactFiberCompleteWork.js" -> "packages/react-reconciler/src/ReactFiber.js"
+"packages/react-dom/src/client/ReactDOMComponent.js" -> "packages/react-dom/src/events/ReactDOMEventListener.js"
+"packages/react-dom/src/client/ReactDOMComponent.js" -> "packages/react-dom/src/shared/ReactDOMSharedInternals.js"
+"packages/react-dom/src/events/ReactDOMEventListener.js" -> "packages/react-dom/src/events/ReactDOMEventPlugin.js"
+"packages/react-dom/src/events/ReactDOMEventPlugin.js" -> "packages/react-dom/src/events/ReactDOMEventUtils.js"
+"packages/react-dom/src/shared/ReactDOMSharedInternals.js" -> "packages/react-reconciler/src/ReactFiber.js"
+"packages/react-dom/src/server/ReactDOMServer.js" -> "packages/react-dom/src/server/ReactDOMServerRenderer.js"
+"packages/react-dom/src/server/ReactDOMServerRenderer.js" -> "packages/react-reconciler/src/ReactFiber.js"
+"packages/react-dom/src/server/ReactDOMServerRenderer.js" -> "packages/react-dom/src/server/ReactDOMServerUtils.js"
+"packages/react-dom/src/test-utils/ReactTestUtils.js" -> "packages/react-dom/src/client/ReactDOM.js"
+"packages/react-dom/src/test-utils/ReactTestUtils.js" -> "packages/react-reconciler/src/ReactFiberReconciler.js"
+"packages/shared/ReactSharedInternals.js" -> "packages/react-reconciler/src/ReactFiber.js"
+"packages/react/src/React.js" -> "packages/shared/ReactSharedInternals.js"
+"packages/react/src/ReactHooks.js" -> "packages/react/src/React.js"
+"packages/react/src/ReactElement.js" -> "packages/react/src/React.js"
+}`
+};
+
+document.querySelectorAll('.preset').forEach(e=>{
+  e.addEventListener('click',()=>{
+    const k=e.dataset.p;
+    if(P[k]) load(P[k], e.childNodes[0].textContent.trim());
+  });
+});
+
+// Default
+load(P.numpy,'numpy');
+</script>
+</body>
+</html>
