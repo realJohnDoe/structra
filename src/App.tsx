@@ -1,8 +1,19 @@
 import { useMemo, useState } from "react";
-import { AppShell, Badge, Box, Grid, Group, Stack, Text, Title } from "@mantine/core";
+import {
+  AppShell,
+  Badge,
+  Box,
+  Grid,
+  Group,
+  Stack,
+  Text,
+  Title,
+  Tabs,
+} from "@mantine/core";
 import { FileTreePanel } from "./components/FileTreePanel";
 import { GraphPanel } from "./components/GraphPanel";
 import { NodeEditor } from "./components/NodeEditor";
+import { RepoExplorer } from "./components/RepoExplorer";
 import {
   buildFileTree,
   cloneNodeMap,
@@ -25,6 +36,7 @@ const COLORS = {
 };
 
 function App() {
+  const [activeTab, setActiveTab] = useState<string | null>("mention-tree");
   const [nodes, setNodes] = useState<NodeMap>(() => createPreset("star+chain"));
   const data = useMemo(() => computeAll(nodes), [nodes]);
   const tree = useMemo(() => buildFileTree(nodes, data), [nodes, data]);
@@ -48,134 +60,152 @@ function App() {
         <Group px="md" py="sm" justify="space-between">
           <Stack gap={0}>
             <Title order={3} c={COLORS.accent} ff="Fraunces, serif">
-              MentionTree
+              Structra
             </Title>
             <Text size="xs" c="dimmed" fs="italic">
-              block-cut tree sandbox
+              graph analysis tools
             </Text>
           </Stack>
-          <Badge variant="light" color="cyan">
-            score: {score ?? "—"}
-          </Badge>
+          <Tabs value={activeTab} onChange={setActiveTab} variant="outline">
+            <Tabs.List>
+              <Tabs.Tab value="mention-tree">MentionTree</Tabs.Tab>
+              <Tabs.Tab value="repo-explorer">RepoExplorer</Tabs.Tab>
+            </Tabs.List>
+          </Tabs>
         </Group>
       </AppShell.Header>
       <AppShell.Main>
-        <Grid gap="sm" align="stretch">
-          <Grid.Col span={{ base: 12, md: 3 }}>
-            <NodeEditor
-              nodes={nodes}
-              onAddNode={(name) =>
-                setNodes((prev) => {
-                  const next = cloneNodeMap(prev);
-                  const max = Object.keys(next)
-                    .map((id) => Number(id.slice(1)))
-                    .filter((n) => Number.isFinite(n))
-                    .reduce((a, b) => Math.max(a, b), 0);
-                  const id = `n${max + 1}`;
-                  next[id] = { id, name, mentions: new Set() };
-                  return next;
-                })
-              }
-              onRemoveNode={(id) =>
-                setNodes((prev) => {
-                  const next = cloneNodeMap(prev);
-                  delete next[id];
-                  Object.values(next).forEach((n) => n.mentions.delete(id));
-                  return next;
-                })
-              }
-              onAddMention={(a, b) =>
-                setNodes((prev) => {
-                  if (!a || !b || a === b || !prev[a] || !prev[b]) return prev;
-                  const next = cloneNodeMap(prev);
-                  next[a].mentions.add(b);
-                  next[b].mentions.add(a);
-                  return next;
-                })
-              }
-              onRemoveMention={(a, b) =>
-                setNodes((prev) => {
-                  if (!prev[a] || !prev[b]) return prev;
-                  const next = cloneNodeMap(prev);
-                  next[a].mentions.delete(b);
-                  next[b].mentions.delete(a);
-                  return next;
-                })
-              }
-              onLoadPreset={(name) => {
-                setNodes(createPreset(name));
-              }}
-              onImportDot={(dotText) => {
-                console.info("[dot-import] received chars:", dotText.length);
-                const imported = createFromDot(dotText);
-                if (imported) {
-                  console.info("[dot-import] imported nodes:", Object.keys(imported).length);
-                  setNodes(imported);
-                  return;
+        {activeTab === "mention-tree" && (
+          <Grid gap="sm" align="stretch">
+            <Grid.Col span={{ base: 12, md: 3 }}>
+              <NodeEditor
+                nodes={nodes}
+                onAddNode={(name) =>
+                  setNodes((prev) => {
+                    const next = cloneNodeMap(prev);
+                    const max = Object.keys(next)
+                      .map((id) => Number(id.slice(1)))
+                      .filter((n) => Number.isFinite(n))
+                      .reduce((a, b) => Math.max(a, b), 0);
+                    const id = `n${max + 1}`;
+                    next[id] = { id, name, mentions: new Set() };
+                    return next;
+                  })
                 }
-                console.warn("[dot-import] parser returned null");
-                setNodes(createNodeMap());
-                window.alert("No nodes or edges found in this DOT file.");
-              }}
-            />
-          </Grid.Col>
-          <Grid.Col span={{ base: 12, md: 9 }}>
-            <Box className="viz-grid-2x2">
-              <Box className="panel-fill">
-            <GraphPanel
-                  title="1 · MENTION GRAPH"
-                  dotColor={COLORS.accent2}
-                  legend={[
-                    { label: "cut vertex", color: COLORS.cut },
-                    { label: "regular node", color: COLORS.block },
-                  ]}
-                  nodeIds={mentionGraph.ids}
-                  edges={mentionGraph.edges}
-                  nodeColor={(id) => (data?.cutVertices.has(id) ? COLORS.cut : COLORS.block)}
-                  nodeLabel={(id) => nodes[id]?.name ?? id}
-                />
+                onRemoveNode={(id) =>
+                  setNodes((prev) => {
+                    const next = cloneNodeMap(prev);
+                    delete next[id];
+                    Object.values(next).forEach((n) => n.mentions.delete(id));
+                    return next;
+                  })
+                }
+                onAddMention={(a, b) =>
+                  setNodes((prev) => {
+                    if (!a || !b || a === b || !prev[a] || !prev[b])
+                      return prev;
+                    const next = cloneNodeMap(prev);
+                    next[a].mentions.add(b);
+                    next[b].mentions.add(a);
+                    return next;
+                  })
+                }
+                onRemoveMention={(a, b) =>
+                  setNodes((prev) => {
+                    if (!prev[a] || !prev[b]) return prev;
+                    const next = cloneNodeMap(prev);
+                    next[a].mentions.delete(b);
+                    next[b].mentions.delete(a);
+                    return next;
+                  })
+                }
+                onLoadPreset={(name) => {
+                  setNodes(createPreset(name));
+                }}
+                onImportDot={(dotText) => {
+                  console.info("[dot-import] received chars:", dotText.length);
+                  const imported = createFromDot(dotText);
+                  if (imported) {
+                    console.info(
+                      "[dot-import] imported nodes:",
+                      Object.keys(imported).length,
+                    );
+                    setNodes(imported);
+                    return;
+                  }
+                  console.warn("[dot-import] parser returned null");
+                  setNodes(createNodeMap());
+                  window.alert("No nodes or edges found in this DOT file.");
+                }}
+              />
+            </Grid.Col>
+            <Grid.Col span={{ base: 12, md: 9 }}>
+              <Box className="viz-grid-2x2">
+                <Box className="panel-fill">
+                  <GraphPanel
+                    title="1 · MENTION GRAPH"
+                    dotColor={COLORS.accent2}
+                    legend={[
+                      { label: "cut vertex", color: COLORS.cut },
+                      { label: "regular node", color: COLORS.block },
+                    ]}
+                    nodeIds={mentionGraph.ids}
+                    edges={mentionGraph.edges}
+                    nodeColor={(id) =>
+                      data?.cutVertices.has(id) ? COLORS.cut : COLORS.block
+                    }
+                    nodeLabel={(id) => nodes[id]?.name ?? id}
+                  />
+                </Box>
+                <Box className="panel-fill">
+                  <GraphPanel
+                    title="2 · RAW BC-TREE"
+                    dotColor={COLORS.block}
+                    legend={[
+                      { label: "cut vertex", color: COLORS.cut },
+                      { label: "block node", color: COLORS.block },
+                    ]}
+                    nodeIds={data?.bcNodes.map((n) => n.id) ?? []}
+                    edges={data?.bcEdges ?? []}
+                    nodeColor={(id) =>
+                      id.startsWith("C:") ? COLORS.cut : COLORS.block
+                    }
+                    nodeLabel={(id) =>
+                      data?.bcNodes.find((n) => n.id === id)?.label ?? id
+                    }
+                  />
+                </Box>
+                <Box className="panel-fill">
+                  <GraphPanel
+                    title="3 · COLLAPSED + CENTROID"
+                    dotColor={COLORS.chain}
+                    legend={[
+                      { label: "centroid", color: COLORS.centroid },
+                      { label: "junction/cut", color: COLORS.cut },
+                      { label: "chain/leaves", color: COLORS.chain },
+                      { label: "block", color: COLORS.block },
+                    ]}
+                    nodeIds={data?.collNodes.map((n) => n.id) ?? []}
+                    edges={data?.collEdges ?? []}
+                    nodeColor={(id) => {
+                      if (data?.centroidSupers.has(id)) return COLORS.centroid;
+                      if (id.startsWith("CG:")) return COLORS.chain;
+                      if (id.startsWith("C:")) return COLORS.cut;
+                      return COLORS.block;
+                    }}
+                    nodeLabel={(id) =>
+                      data?.collNodes.find((n) => n.id === id)?.label ?? id
+                    }
+                  />
+                </Box>
+                <Box className="panel-fill">
+                  <FileTreePanel tree={tree} />
+                </Box>
               </Box>
-              <Box className="panel-fill">
-                <GraphPanel
-                  title="2 · RAW BC-TREE"
-                  dotColor={COLORS.block}
-                  legend={[
-                    { label: "cut vertex", color: COLORS.cut },
-                    { label: "block node", color: COLORS.block },
-                  ]}
-                  nodeIds={data?.bcNodes.map((n) => n.id) ?? []}
-                  edges={data?.bcEdges ?? []}
-                  nodeColor={(id) => (id.startsWith("C:") ? COLORS.cut : COLORS.block)}
-                  nodeLabel={(id) => data?.bcNodes.find((n) => n.id === id)?.label ?? id}
-                />
-              </Box>
-              <Box className="panel-fill">
-                <GraphPanel
-                  title="3 · COLLAPSED + CENTROID"
-                  dotColor={COLORS.chain}
-                  legend={[
-                    { label: "centroid", color: COLORS.centroid },
-                    { label: "junction/cut", color: COLORS.cut },
-                    { label: "chain/leaves", color: COLORS.chain },
-                    { label: "block", color: COLORS.block },
-                  ]}
-                  nodeIds={data?.collNodes.map((n) => n.id) ?? []}
-                  edges={data?.collEdges ?? []}
-                  nodeColor={(id) => {
-                    if (data?.centroidSupers.has(id)) return COLORS.centroid;
-                    if (id.startsWith("CG:")) return COLORS.chain;
-                    if (id.startsWith("C:")) return COLORS.cut;
-                    return COLORS.block;
-                  }}
-                  nodeLabel={(id) => data?.collNodes.find((n) => n.id === id)?.label ?? id}
-                />
-              </Box>
-              <Box className="panel-fill">
-                <FileTreePanel tree={tree} />
-              </Box>
-            </Box>
-          </Grid.Col>
-        </Grid>
+            </Grid.Col>
+          </Grid>
+        )}
+        {activeTab === "repo-explorer" && <RepoExplorer />}
       </AppShell.Main>
     </AppShell>
   );
@@ -214,8 +244,8 @@ function createFromDot(dotText: string): NodeMap | null {
   const readId = (s: string) => {
     const t = s.trim();
     if (!t) return "";
-    if (t.startsWith("\"")) {
-      const end = t.indexOf("\"", 1);
+    if (t.startsWith('"')) {
+      const end = t.indexOf('"', 1);
       return end > 0 ? t.slice(1, end) : "";
     }
     const m = t.match(/^[A-Za-z_][A-Za-z0-9_]*/);
@@ -247,8 +277,12 @@ function createFromDot(dotText: string): NodeMap | null {
     if (stmt.includes("->") || stmt.includes("--")) {
       const op = stmt.includes("->") ? "->" : "--";
       const left = stmt.split("[")[0].trim();
-      const parts = left.split(op).map((p) => readId(p)).filter(Boolean);
-      if (!parts.length && sampleSkipped.length < 6) sampleSkipped.push(trimmed);
+      const parts = left
+        .split(op)
+        .map((p) => readId(p))
+        .filter(Boolean);
+      if (!parts.length && sampleSkipped.length < 6)
+        sampleSkipped.push(trimmed);
       for (let i = 0; i < parts.length - 1; i++) {
         const a = parts[i];
         const b = parts[i + 1];
@@ -267,7 +301,14 @@ function createFromDot(dotText: string): NodeMap | null {
       if (sampleSkipped.length < 6) sampleSkipped.push(trimmed);
       continue;
     }
-    if (id === "node" || id === "edge" || id === "graph" || id === "digraph" || id === "subgraph" || id === "strict") {
+    if (
+      id === "node" ||
+      id === "edge" ||
+      id === "graph" ||
+      id === "digraph" ||
+      id === "subgraph" ||
+      id === "strict"
+    ) {
       skippedLines++;
       continue;
     }
