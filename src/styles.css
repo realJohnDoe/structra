@@ -9,30 +9,6 @@ body {
   min-height: 100vh;
 }
 
-.viz-grid-2x2 {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  grid-template-rows: repeat(2, minmax(260px, 1fr));
-  gap: 12px;
-  min-height: calc(100vh - 110px);
-}
-
-.panel-fill {
-  height: 100%;
-}
-
-@media (max-width: 48em) {
-  .viz-grid-2x2 {
-    grid-template-columns: 1fr;
-    grid-template-rows: repeat(4, minmax(240px, auto));
-    min-height: auto;
-  }
-}
-
-.panel-fill > * {
-  height: 100%;
-}
-
 canvas {
   display: block;
   width: 100%;
