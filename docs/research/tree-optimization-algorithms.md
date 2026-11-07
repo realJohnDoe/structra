@@ -1,6 +1,6 @@
 # Tree optimization algorithms and in-browser scaling
 
-Research for ticket realJohnDoe/structra#7. Question: which algorithms find a near-minimum-cost **Tree** (CONTEXT.md) over a repo's **Dependency Graph**, for structural entropy, the hierarchical map equation, Dasgupta cost, or Structra's own cost
+Research for ticket realJohnDoe/structra#7. Question: which algorithms find a near-minimum-cost **Tree** (GLOSSARY.md) over a repo's **Dependency Graph**, for structural entropy, the hierarchical map equation, Dasgupta cost, or Structra's own cost
 
 ```
 Total Cost(λ) = λ · Σ_edges Σ_{crossed internal nodes t} ln k_t  +  (1−λ) · Σ_internal t ln k_t
@@ -29,11 +29,11 @@ This session's network allowed GitHub and npm/PyPI but **not** arxiv.org, nature
 | Structural entropy of an encoding tree (Li & Pan) | For each tree node α: −(g_α / vol G)·log(vol α / vol parent(α)), where g_α is the cut leaving α. Information needed to locate a random walk step in the hierarchy | Multi-level, height usually capped at K | Li & Pan, "Structural Information and Dynamical Complexity of Networks", IEEE TIT 62(6):3290–3339, 2016, doi:10.1109/TIT.2016.2555904 |
 | Hierarchical map equation (Infomap) | Bits per step to describe a random walker with nested codebooks | Multi-level, number of levels chosen by the objective | Rosvall & Bergstrom, "Multilevel compression of random walks…", PLoS ONE 6(4):e18209, 2011, https://arxiv.org/abs/1010.0431 |
 | Dasgupta cost | Σ_edges w(u,v)·\|leaves(LCA(u,v))\| | The optimum is a binary tree | Dasgupta, "A cost function for similarity-based hierarchical clustering", STOC 2016, https://arxiv.org/abs/1510.05043 |
-| Structra Total Cost | λ·Σ edges·ln k on crossed nodes + (1−λ)·Σ ln k | λ→0: one flat root (Node Cost only). λ→1: deeper trees whose nodes still have k>2 (see benchmark) | CONTEXT.md |
+| Structra Total Cost | λ·Σ edges·ln k on crossed nodes + (1−λ)·Σ ln k | λ→0: one flat root (Node Cost only). λ→1: deeper trees whose nodes still have k>2 (see benchmark) | GLOSSARY.md |
 
 All four objectives *decompose over internal nodes*, and the change from a local edit can be computed from aggregates (volume, cut, number of LCA edges, branching). That property is what makes greedy merge and local-move algorithms cheap for them. Everything below relies on it.
 
-For Structra's cost, take an internal node t with branching k_t. Let c_t = cut(t) + (#edges whose LCA is t). This assumes "crossed nodes" includes the LCA, which CONTEXT.md still lists as open. Then
+For Structra's cost, take an internal node t with branching k_t. Let c_t = cut(t) + (#edges whose LCA is t). This assumes "crossed nodes" includes the LCA, which GLOSSARY.md still lists as open. Then
 
 ```
 cost(t) = ln k_t · (λ·c_t + (1−λ))
@@ -47,7 +47,7 @@ c_p' = c_p + lca(u)          # u's LCA edges now have p as LCA; u's cut edges al
 Δ    = ln k_p'·(λ c_p' + 1−λ) − cost(p) − cost(u)
 ```
 
-So each move is an O(1) evaluation. I derived this myself from CONTEXT.md's definitions and checked it in the prototype. I did not take it from a paper.
+So each move is an O(1) evaluation. I derived this myself from GLOSSARY.md's definitions and checked it in the prototype. I did not take it from a paper.
 
 ---
 
@@ -147,7 +147,7 @@ Recommendations:
 3. **Infomap** is a baseline or seed only. Note the GPL-3.0 license and the ~5 MB bundle.
 4. **Open risks / follow-ups.**
    - Measure how much worse dendrogram contraction is than a per-λ full search, on numpy and django where both are cheap.
-   - Settle the "which path nodes count" question in CONTEXT.md, because it changes c_t.
+   - Settle the "which path nodes count" question in GLOSSARY.md, because it changes c_t.
    - The dendrogram builder needs a typed-array/CSR rewrite before it can run at Linux size in the browser. The prototype's `Map`-of-`Map`s needed >2 GB heap at 60k nodes in one variant.
    - **Exact contraction by DP.** Structural decomposition suggests that, for a *fixed* dendrogram and a cap K on branching, the optimal contraction is a tree DP over (node, frontier size). Our ln k·(λc + 1−λ) term couples k with c, so a direct DP costs about O(n·K³). That is feasible for numpy and django but not obviously for Linux. This is my own derivation and is unverified. SEAT's `_contract_tree_dp` is the closest precedent.
 

@@ -2,7 +2,7 @@
 
 Research for issue #3 ("Canonical tree description-length objectives").
 
-**Question.** Is there a canonical information-theoretic cost for how well a hierarchy **Tree** fits a **Dependency Graph** that Structra should adopt or compare to? Current proposal (see `CONTEXT.md`):
+**Question.** Is there a canonical information-theoretic cost for how well a hierarchy **Tree** fits a **Dependency Graph** that Structra should adopt or compare to? Current proposal (see `GLOSSARY.md`):
 
 ```
 Total Cost = λ · Σ_edges Σ_{crossed internal nodes x} ln k(x)  +  (1−λ) · Σ_{internal nodes x} ln k(x)
@@ -173,7 +173,7 @@ Pairwise crossovers among the three named trees: two-level beats flat for λ > 1
 
 ## Recommendation
 
-1. **Don't replace the proposal. Settle its open point: count both sides.** Edge Cost = Σ ln k over every internal node on the tree path u…LCA…v. This is exactly the set of codebooks the hierarchical map equation uses for a step u→v, so the proposal reads as "map equation with uniform codebooks, plus an explicit model-cost term". The descent-only variant inherits structural entropy's bias toward binary trees and ignores direction-sensitivity problems such as free source nodes. Update `CONTEXT.md` → **Edge Cost** accordingly.
+1. **Don't replace the proposal. Settle its open point: count both sides.** Edge Cost = Σ ln k over every internal node on the tree path u…LCA…v. This is exactly the set of codebooks the hierarchical map equation uses for a step u→v, so the proposal reads as "map equation with uniform codebooks, plus an explicit model-cost term". The descent-only variant inherits structural entropy's bias toward binary trees and ignores direction-sensitivity problems such as free source nodes. Update `GLOSSARY.md` → **Edge Cost** accordingly.
 2. **Normalise the edge term per edge** (divide by m, or use edge weights summing to 1, as the map equation and structural entropy do). Then λ means the same thing for a 30-file repo and a 3,000-file repo. Unnormalised, the edge sum grows with m while the node term grows with about n, so the λ that gives a useful tree drifts with repo size.
 3. **Use the hierarchical map equation as the reference comparison** (it is the closest thing to canonical for "multilevel tree fit to a graph"). Possibly offer it later as a λ-free "Infomap" preset, using undirected or PageRank flow and treating Markov time as the closest analogue of Balance. Infomap is available as a library (`pip install infomap`), so an Optimal Tree can be checked against Infomap's tree on the **Example Repos**.
 4. **Don't adopt Dasgupta or unbounded structural entropy.** Both are optimised by binary trees, have no trade-off parameter, and (Dasgupta) are not information-theoretic. Structural entropy is only usable with a fixed height K, which conflicts with letting the Balance choose the depth.
