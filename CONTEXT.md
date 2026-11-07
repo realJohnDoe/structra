@@ -1,6 +1,6 @@
 # Structra glossary
 
-**Dependency Graph**: Files of a repository (nodes) and the file-to-file import relationships between them (edges), as extracted by a Parser.
+**Dependency Graph**: Files of a repository (nodes) and the directed file-to-file import relationships between them (edges), as extracted by a Parser. An edge says only that one file imports another, not how often.
 
 **Leaf**: A file. The smallest unit placed in a tree.
 
@@ -22,6 +22,6 @@
 
 **Parser**: A per-language tool that reads a repository checkout and emits a Graph File.
 
-**Graph File**: The language-agnostic file format every Parser emits and the app reads. (Format still open.)
+**Graph File**: The serialized Dependency Graph of one repository at one commit, as emitted by a Parser and read by the app. Lists every in-scope file, including files with no dependencies, and each directed import from importer to imported file at most once. Records which repository, commit, language and Parser it came from, and nothing that varies between runs. Valid only together with the app and Parsers of the same structra commit.
 
 **Example Repo**: A well-known repository pinned at a specific commit, shipped with a precomputed Graph File. It doubles as an end-to-end test for its Parser.
