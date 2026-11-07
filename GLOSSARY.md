@@ -14,11 +14,13 @@
 
 **Node Cost**: Σ ln k over all internal nodes of a Tree. Penalizes having many decision points.
 
-**Crossing**: An internal node on the tree path between the two files of a dependency edge.
+**Crossing**: An internal node on the tree path between the two files of a dependency edge: every ancestor of either file below their lowest common ancestor, plus that lowest common ancestor once.
 
-**Edge Cost**: For one dependency edge, Σ ln k over the internal nodes it crosses. Penalizes dependencies that span distant parts of the Tree. (Exactly which path nodes count is still open.)
+**Edge Cost**: For one dependency edge, Σ ln k over its Crossings, counted on both sides of the path. Penalizes dependencies that span distant parts of the Tree. Each directed edge pays separately, so a mutual import pays twice.
 
-**Balance (λ)**: The slider weight between Edge Cost and Node Cost: Total Cost = λ·Σ Edge Cost + (1−λ)·Node Cost.
+**Total Cost**: The quantity an Optimal Tree minimizes: λ · (average Edge Cost per dependency) + (1−λ) · (Node Cost per file). Measured in nats.
+
+**Balance (λ)**: The weight between the two parts of Total Cost, from 0 (one flat root) to 1 (Edge Cost only). The slider sets it directly.
 
 **Parser**: A per-language tool that reads a repository checkout and emits a Graph File.
 

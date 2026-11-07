@@ -1,6 +1,6 @@
 # Structra
 
-Structra visualizes the information-theoretic Optimal Tree of a repository's file dependency graph. See `CONTEXT.md` for the domain glossary.
+Structra visualizes the information-theoretic Optimal Tree of a repository's file dependency graph. See `GLOSSARY.md` for the domain glossary. It is this repo's `CONTEXT.md`: skills that read or update `CONTEXT.md` should use `GLOSSARY.md` instead.
 
 ## Planning: wayfinder map on GitHub Issues
 
