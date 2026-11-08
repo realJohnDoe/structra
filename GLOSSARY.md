@@ -8,7 +8,7 @@
 
 **Directory Tree**: The Tree given by the repository's actual folder structure.
 
-**Optimal Tree**: The Tree that minimizes Total Cost for a given Balance, found by search rather than taken from the folder structure. Has no single-child internal nodes.
+**Optimal Tree**: The lowest-Total-Cost Tree Structra's optimizer finds for a given Balance, found by search rather than taken from the folder structure. A heuristic approximation: the true minimum over all Trees is infeasible to compute. Has no single-child internal nodes. Optimal Trees at different Balances are nested: the one at a higher Balance only splits groups of the one at a lower Balance, never moves files between them.
 
 **Branching (k)**: The number of children of an internal node.
 
@@ -18,7 +18,7 @@
 
 **Edge Cost**: For one dependency edge, Σ ln k over its Crossings, counted on both sides of the path. Penalizes dependencies that span distant parts of the Tree. Each directed edge pays separately, so a mutual import pays twice.
 
-**Total Cost**: The quantity an Optimal Tree minimizes: λ · (average Edge Cost per dependency) + (1−λ) · (Node Cost per file). Measured in nats.
+**Total Cost**: The quantity the optimizer minimizes to find an Optimal Tree: λ · (average Edge Cost per dependency) + (1−λ) · (Node Cost per file). Measured in nats.
 
 **Balance (λ)**: The weight between the two parts of Total Cost, from 0 (one flat root) to 1 (Edge Cost only). The slider sets it directly.
 
