@@ -22,8 +22,10 @@
 
 **Balance (λ)**: The weight between the two parts of Total Cost, from 0 (one flat root) to 1 (Edge Cost only). The slider sets it directly.
 
-**Parser**: A per-language tool that reads a repository checkout and emits a Graph File.
+**Parser**: A per-language command-line tool that reads the In-scope Files of a git checkout and emits a Graph File. It takes the repository and commit from the checkout itself.
 
-**Graph File**: The serialized Dependency Graph of one repository at one commit, as emitted by a Parser and read by the app. Lists every in-scope file, including files with no dependencies, and each directed import from importer to imported file at most once. Records which repository, commit, language and Parser it came from, and nothing that varies between runs. Valid only together with the app and Parsers of the same structra commit.
+**In-scope File**: A file that becomes a node of a Graph File: tracked by git at the parsed commit, with one of the Parser's language extensions, outside vendored directories and any configured excludes. Test files are in scope.
+
+**Graph File**: The serialized Dependency Graph of one repository at one commit, as emitted by a Parser and read by the app. Lists every In-scope File, including files with no dependencies, and each directed import from importer to imported file at most once. Records which repository, commit, language and Parser it came from, and nothing that varies between runs. Valid only together with the app and Parsers of the same structra commit.
 
 **Example Repo**: A well-known repository pinned at a specific commit, shipped with a precomputed Graph File. It doubles as an end-to-end test for its Parser.
