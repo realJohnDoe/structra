@@ -317,6 +317,25 @@ export function flowWidth(n: number) {
   return Math.min(8, 1 + Math.log2(n));
 }
 
+export const FILE_COLOR = "#8a919c";
+const BRANCH_HUES = [205, 85, 30, 280, 165, 340, 50, 240];
+
+/**
+ * Groups: one hue per branch directly below `top` (the current zoom), darker
+ * with depth. Files: a neutral grey, so "colour = group, grey = file".
+ */
+export function nodeColor(n: OTNode, top: OTNode): string {
+  if (isFile(n)) return FILE_COLOR;
+  if (n.id === top.id) return "hsl(80 10% 45%)";
+  let b: OTNode = n;
+  while (b.parent && b.parent.id !== top.id) b = b.parent;
+  if (!b.parent) return "hsl(80 10% 45%)"; // not below top
+  const groups = top.children.filter((c) => !isFile(c));
+  const hue = BRANCH_HUES[Math.max(0, groups.indexOf(b)) % BRANCH_HUES.length];
+  const below = n.depth - b.depth;
+  return `hsl(${hue} 65% ${Math.max(32, 62 - below * 8)}%)`;
+}
+
 /** Colour by how self-contained a group is: internal deps vs. deps crossing its boundary. */
 export function cohesionColor(n: OTNode): string {
   if (n.leafIndex >= 0) return "#3a3f47";

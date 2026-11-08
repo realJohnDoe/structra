@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { ActionIcon, FileButton, Group, ScrollArea, Select, Text, UnstyledButton } from "@mantine/core";
 import { Upload } from "lucide-react";
 import { LambdaSlider } from "./LambdaSlider";
-import { ACCENT, BG, BG1, BORDER, EXAMPLES, IN_COLOR, NodeDetails, OUT_COLOR, cohesionColor, edgeFlows, flowWidth, isFile, pathTo } from "./shared";
+import { ACCENT, BG, BG1, BORDER, EXAMPLES, IN_COLOR, NodeDetails, OUT_COLOR, FILE_COLOR, edgeFlows, nodeColor, flowWidth, isFile, pathTo } from "./shared";
 import type { ProtoState } from "./shared";
 import type { OTNode } from "./optimizer";
 
@@ -153,8 +153,8 @@ export function VariantA({ s }: { s: ProtoState }) {
                   width={Math.max(0, rw - 1)}
                   height={ROW - 1}
                   rx={3}
-                  fill={cohesionColor(n)}
-                  fillOpacity={isFile(n) ? 0.6 : 0.85}
+                  fill={nodeColor(n, focus!)}
+                  fillOpacity={1}
                   stroke={sel ? "#fff" : "none"}
                   strokeWidth={2}
                 />
@@ -181,7 +181,7 @@ export function VariantA({ s }: { s: ProtoState }) {
           <NodeDetails s={s} node={s.selected} onPick={pick} />
         ) : (
           <Text size="sm" c="dimmed">
-            Tap a block to select it and see its imports (lime line = imports, orange = imported by); tap it again to zoom in. Block colour: lime = self-contained group, red = leaky.
+            Tap a block to select it and see its imports (lime line = imports, orange = imported by); tap it again to zoom in. Colour = group (one colour per branch), <span style={{ color: FILE_COLOR }}>grey = file</span>. Block width = number of files.
           </Text>
         )}
       </ScrollArea>

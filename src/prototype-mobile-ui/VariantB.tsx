@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Chip, FileButton, Group, Text, UnstyledButton } from "@mantine/core";
 import { ChevronDown, ChevronRight, FileCode, Info, Upload } from "lucide-react";
 import { LambdaSlider } from "./LambdaSlider";
-import { ACCENT, BG, BG1, BORDER, EXAMPLES, IN_COLOR, NodeDetails, OUT_COLOR, cohesionColor, edgeFlows, isFile, pathTo } from "./shared";
+import { ACCENT, BG, BG1, BORDER, EXAMPLES, IN_COLOR, NodeDetails, OUT_COLOR, edgeFlows, nodeColor, isFile, pathTo } from "./shared";
 import type { ProtoState } from "./shared";
 import type { OTNode } from "./optimizer";
 
@@ -88,7 +88,7 @@ export function VariantB({ s }: { s: ProtoState }) {
                       minWidth: 2,
                       height: 3,
                       borderRadius: 2,
-                      background: cohesionColor(n),
+                      background: nodeColor(n, s.tree!.root),
                     }}
                   />
                 </div>

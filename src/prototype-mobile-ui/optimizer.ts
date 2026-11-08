@@ -38,8 +38,10 @@ export interface OTNode {
   leafIndex: number; // -1 for internal
   leaves: number[]; // file indices below
   depth: number;
-  label: string;
+  label: string; // groups: own folder ("json/") or "{hub, hub}"; files: last two path segments
   sublabel: string;
+  prefix: string; // deepest folder containing every file below
+  hubs: string[]; // groups: most-imported files inside, short names
   internalEdges: number; // edges with both ends inside
   edgesIn: number; // edges from outside into this group
   edgesOut: number; // edges from this group to outside
@@ -275,6 +277,8 @@ function contract(prep: Prepared, lambda: number): OptimalTree {
       depth: d,
       label: "",
       sublabel: "",
+      prefix: "",
+      hubs: [],
       internalEdges: 0,
       edgesIn: 0,
       edgesOut: 0,
@@ -322,6 +326,7 @@ function contract(prep: Prepared, lambda: number): OptimalTree {
     stamp = 0;
   };
   stats(root);
+  finishLabels(root, paths);
   sortTree(root);
 
   return {
@@ -346,13 +351,21 @@ function sortTree(node: OTNode) {
   node.children.forEach(sortTree);
 }
 
-// Labels for synthetic groups (an open question on the map): the deepest folder
-// that contains every file, plus the group's most-imported file as a hint.
+// Labels for synthetic groups (an open question on the map). Groups have no
+// names of their own, so: if the group has a folder of its own (its common folder
+// is deeper than its parent's), use that folder, e.g. "json/". Otherwise name it
+// as a set by its two most-imported files, e.g. "{app, ctx}".
+const shortName = (path: string) => {
+  const parts = path.replace(/\/(__init__|index|mod|lib)\.\w+$/, "").replace(/\.\w+$/, "").split("/");
+  return parts[parts.length - 1];
+};
+
 function labelNode(node: OTNode, paths: string[], prep: Prepared) {
   if (node.leafIndex >= 0) {
     const p = paths[node.leafIndex];
     node.label = p.split("/").slice(-2).join("/");
     node.sublabel = p;
+    node.prefix = p.split("/").slice(0, -1).join("/");
     return;
   }
   const first = paths[node.leaves[0]].split("/");
@@ -363,24 +376,33 @@ function labelNode(node: OTNode, paths: string[], prep: Prepared) {
     while (j < common && j < parts.length - 1 && parts[j] === first[j]) j++;
     common = j;
   }
-  const prefix = first.slice(0, common).join("/");
-  let hub = node.leaves[0];
-  let hubDeg = -1;
+  node.prefix = first.slice(0, common).join("/");
   const set = new Set(node.leaves);
-  for (const l of node.leaves) {
+  const deg = node.leaves.map((l) => {
     let d = 0;
     for (const s of prep.inn[l]) if (set.has(s)) d++;
-    if (d > hubDeg || (d === hubDeg && paths[l] < paths[hub])) {
-      hub = l;
-      hubDeg = d;
-    }
+    return { l, d };
+  });
+  deg.sort((a, b) => b.d - a.d || (paths[a.l] < paths[b.l] ? -1 : 1));
+  const hubs: string[] = [];
+  for (const { l } of deg) {
+    const nm = shortName(paths[l]);
+    if (!hubs.includes(nm)) hubs.push(nm);
+    if (hubs.length === 2) break;
   }
-  // "views ⋯ flask/" = group around views.py, all files under …/flask/.
-  const hubParts = paths[hub].replace(/\/(__init__|index|mod|lib)\.\w+$/, "").replace(/\.\w+$/, "").split("/");
-  const hubName = hubParts[hubParts.length - 1];
-  const lastDir = prefix.split("/").pop();
-  node.label = lastDir && lastDir !== hubName ? `${hubName} · ${lastDir}/` : `${hubName}`;
-  node.sublabel = `around ${paths[hub]} · all under ${prefix ? prefix + "/" : "the repo root"}`;
+  node.hubs = hubs;
+}
+
+function finishLabels(node: OTNode, paths: string[]) {
+  if (node.leafIndex < 0) {
+    const parentPrefix = node.parent ? node.parent.prefix : null;
+    const ownFolder = node.prefix && node.prefix !== parentPrefix;
+    const set = `{${node.hubs.join(", ")}${node.leaves.length > node.hubs.length ? ", …" : ""}}`;
+    node.label = ownFolder ? `${node.prefix.split("/").pop()}/` : set;
+    node.sublabel = `Group of ${node.leaves.length} files${ownFolder ? ` · most imported: ${node.hubs.join(", ")}` : ""} · all under ${node.prefix ? node.prefix + "/" : "the repo root"}`;
+  }
+  void paths;
+  node.children.forEach((c) => finishLabels(c, paths));
 }
 
 export function fileName(prep: Prepared, i: number) {

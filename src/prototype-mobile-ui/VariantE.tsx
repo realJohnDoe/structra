@@ -8,7 +8,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ActionIcon, Button, FileButton, Group, Select, Text } from "@mantine/core";
 import { Upload } from "lucide-react";
 import { LambdaSlider } from "./LambdaSlider";
-import { ACCENT, BG, BG1, BORDER, EXAMPLES, IN_COLOR, NodeDetails, OUT_COLOR, cohesionColor, isFile, pathTo } from "./shared";
+import { ACCENT, BG, BG1, BORDER, EXAMPLES, IN_COLOR, NodeDetails, OUT_COLOR, isFile, nodeColor, pathTo } from "./shared";
 import type { ProtoState } from "./shared";
 import type { OTNode } from "./optimizer";
 
@@ -205,7 +205,7 @@ export function VariantE({ s }: { s: ProtoState }) {
     ] as const) {
       for (const { n, a0, a1 } of list) {
         const isSel = sel?.id === n.id;
-        ctx.strokeStyle = cohesionColor(n);
+        ctx.strokeStyle = nodeColor(n, lay.focus);
         ctx.globalAlpha = isFile(n) ? 0.35 : 0.95;
         ctx.lineWidth = 7;
         ctx.lineCap = "butt";

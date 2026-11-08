@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { ActionIcon, Button, Drawer, FileButton, Group, Stack, Text, UnstyledButton } from "@mantine/core";
 import { Menu, Upload } from "lucide-react";
 import { LambdaSlider } from "./LambdaSlider";
-import { ACCENT, BG, BG1, BORDER, EXAMPLES, IN_COLOR, NodeDetails, OUT_COLOR, cohesionColor, edgeFlows, flowWidth, isFile } from "./shared";
+import { ACCENT, BG, BG1, BORDER, EXAMPLES, IN_COLOR, NodeDetails, OUT_COLOR, FILE_COLOR, edgeFlows, nodeColor, flowWidth, isFile } from "./shared";
 import type { ProtoState } from "./shared";
 import type { OTNode } from "./optimizer";
 
@@ -46,12 +46,12 @@ export function VariantC({ s }: { s: ProtoState }) {
   if (focus) {
     pos.set(focus.id, { mid: 0, ri: 0 });
     const lay = (n: OTNode, a0: number, a1: number, level: number) => {
+      const total = a1 - a0; // fixed before a0 advances, so siblings share the parent's arc exactly
       for (const c of n.children) {
-        const span = ((a1 - a0) * c.leaves.length) / n.leaves.length;
+        const span = (total * c.leaves.length) / n.leaves.length;
         const b0 = a0;
         const b1 = a0 + span;
         a0 = b1;
-        if (span < 0.004) continue;
         const ri = r0 + level * ring;
         const ro = ri + ring - 1;
         const sel = s.selected?.id === c.id;
@@ -59,10 +59,9 @@ export function VariantC({ s }: { s: ProtoState }) {
           <path
             key={c.id}
             d={arcPath(b0, b1, ri, ro)}
-            fill={cohesionColor(c)}
-            fillOpacity={isFile(c) ? 0.55 : 0.9}
+            fill={nodeColor(c, focus)}
             stroke={sel ? "#fff" : BG}
-            strokeWidth={sel ? 2 : 0.5}
+            strokeWidth={sel ? 2 : span * ri > 3 ? 0.75 : 0}
             onClick={() => tap(c)}
             style={{ cursor: "pointer" }}
           />,
@@ -164,7 +163,7 @@ export function VariantC({ s }: { s: ProtoState }) {
               <Text size="xs" c="dimmed" truncate>
                 {isFile(s.selected)
                   ? s.prep?.graph.nodes[s.selected.leafIndex]
-                  : `${s.selected.leaves.length} files · ${s.selected.internalEdges} deps inside · ${s.selected.edgesIn + s.selected.edgesOut} cross`}
+                  : `Group of ${s.selected.leaves.length} files · ${s.selected.internalEdges} imports inside · ${s.selected.edgesIn + s.selected.edgesOut} crossing`}
               </Text>
             </div>
             <Text size="xs" c={ACCENT}>
@@ -173,7 +172,8 @@ export function VariantC({ s }: { s: ProtoState }) {
           </Group>
         ) : (
           <Text size="xs" c="dimmed">
-            Tap a segment to see its imports (lime = imports, orange = imported by); tap again to zoom in.
+            Colour = group (one colour per branch), <span style={{ color: FILE_COLOR }}>grey = file</span>. Segment width =
+            number of files; each ring splits its parent. Tap to see imports, tap again to zoom in.
           </Text>
         )}
       </UnstyledButton>
