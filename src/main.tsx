@@ -3,12 +3,12 @@ import { createRoot } from 'react-dom/client'
 import { MantineProvider } from '@mantine/core'
 import '@mantine/core/styles.css'
 import './styles.css'
-import App from './App.tsx'
+import { MobileUiPrototype } from './prototype-mobile-ui/MobileUiPrototype.tsx'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <MantineProvider defaultColorScheme="dark">
-      <App />
+      <MobileUiPrototype />
     </MantineProvider>
   </StrictMode>,
 )

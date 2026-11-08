@@ -1,0 +1,284 @@
+// PROTOTYPE (throwaway): state and pieces shared by the mobile UI variants.
+import { useEffect, useMemo, useState } from "react";
+import { Badge, Group, Stack, Text, UnstyledButton } from "@mantine/core";
+import { optimalTree, prepare } from "./optimizer";
+import type { GraphFile, OTNode, OptimalTree, Prepared } from "./optimizer";
+
+export const EXAMPLES = [
+  { key: "requests", name: "requests", hint: "37 files" },
+  { key: "flask", name: "flask", hint: "83 files" },
+  { key: "django", name: "django", hint: "2,943 files" },
+] as const;
+
+export const ACCENT = "#c8f060";
+export const BG = "#0f0f0f";
+export const BG1 = "#171717";
+export const BORDER = "#2a2a2a";
+
+export function readParam(name: string): string | null {
+  return new URLSearchParams(window.location.search).get(name);
+}
+
+export function writeParam(name: string, value: string | null) {
+  const u = new URL(window.location.href);
+  if (value === null) u.searchParams.delete(name);
+  else u.searchParams.set(name, value);
+  window.history.replaceState(null, "", u);
+}
+
+export interface ProtoState {
+  repoKey: string; // example key or "upload"
+  repoName: string;
+  setRepo: (key: string) => void;
+  upload: (file: File | null) => void;
+  uploadError: string | null;
+  loading: boolean;
+  prep: Prepared | null;
+  tree: OptimalTree | null;
+  byId: Map<number, OTNode>;
+  lambda: number; // what the slider shows
+  setLambda: (l: number) => void; // live (cheap repos) or deferred
+  commitLambda: (l: number) => void;
+  large: boolean;
+  selected: OTNode | null;
+  select: (n: OTNode | null) => void;
+  resolve: (id: number | null) => OTNode | null; // id → surviving node or ancestor
+}
+
+export function useProtoState(): ProtoState {
+  const [repoKey, setRepoKey] = useState(readParam("repo") ?? "flask");
+  const [graph, setGraph] = useState<GraphFile | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [lambda, setLambdaRaw] = useState(() => Number(readParam("lambda") ?? 0.5));
+  const [committed, setCommitted] = useState(lambda);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (repoKey === "upload") return;
+    let cancelled = false;
+    setLoading(true);
+    fetch(`${import.meta.env.BASE_URL}prototype-examples/${repoKey}.graph.json`)
+      .then((r) => r.json())
+      .then((g: GraphFile) => {
+        if (!cancelled) {
+          setGraph(g);
+          setSelectedId(null);
+        }
+      })
+      .finally(() => !cancelled && setLoading(false));
+    return () => {
+      cancelled = true;
+    };
+  }, [repoKey]);
+
+  const prep = useMemo(() => (graph ? prepare(graph) : null), [graph]);
+  const large = (graph?.nodes.length ?? 0) > 1000;
+  const tree = useMemo(() => (prep ? optimalTree(prep, large ? committed : lambda) : null), [prep, lambda, committed, large]);
+  const byId = useMemo(() => {
+    const m = new Map<number, OTNode>();
+    if (tree) {
+      const walk = (n: OTNode) => {
+        m.set(n.id, n);
+        n.children.forEach(walk);
+      };
+      walk(tree.root);
+    }
+    return m;
+  }, [tree]);
+
+  const resolve = (id: number | null): OTNode | null => {
+    if (id === null || !prep) return null;
+    let x = id;
+    while (x >= 0 && !byId.has(x)) x = prep.dendro.parent[x];
+    return x >= 0 ? byId.get(x)! : null;
+  };
+
+  return {
+    repoKey,
+    repoName: graph ? graph.meta.repo.replace(/^https:\/\/github.com\//, "") : repoKey,
+    setRepo: (k) => {
+      setRepoKey(k);
+      writeParam("repo", k);
+    },
+    upload: (file) => {
+      if (!file) return;
+      file.text().then((txt) => {
+        try {
+          const g = JSON.parse(txt) as GraphFile;
+          if (!Array.isArray(g.nodes) || !Array.isArray(g.edges) || !g.meta) throw new Error("not a Graph File");
+          setUploadError(null);
+          setRepoKey("upload");
+          setGraph(g);
+          setSelectedId(null);
+        } catch (e) {
+          setUploadError(`Couldn't read ${file.name}: ${(e as Error).message}`);
+        }
+      });
+    },
+    uploadError,
+    loading,
+    prep,
+    tree,
+    byId,
+    lambda,
+    setLambda: (l) => {
+      setLambdaRaw(l);
+      if (!large) writeParam("lambda", l.toFixed(2));
+    },
+    commitLambda: (l) => {
+      setCommitted(l);
+      setLambdaRaw(l);
+      writeParam("lambda", l.toFixed(2));
+    },
+    large,
+    selected: resolve(selectedId),
+    select: (n) => setSelectedId(n ? n.id : null),
+    resolve,
+  };
+}
+
+export function lambdaSummary(s: ProtoState) {
+  const t = s.tree;
+  if (!t) return "";
+  return `${t.groups} groups · depth ${t.maxDepth} · ${t.total.toFixed(2)} nats`;
+}
+
+export function pathTo(n: OTNode): OTNode[] {
+  const out: OTNode[] = [];
+  let x: OTNode | null = n;
+  while (x) {
+    out.unshift(x);
+    x = x.parent;
+  }
+  return out;
+}
+
+export function isFile(n: OTNode) {
+  return n.leafIndex >= 0;
+}
+
+/** Detail content for a tapped node; each variant decides where it goes. */
+export function NodeDetails({
+  s,
+  node,
+  onPick,
+  compact,
+}: {
+  s: ProtoState;
+  node: OTNode;
+  onPick: (n: OTNode) => void;
+  compact?: boolean;
+}) {
+  const prep = s.prep!;
+  const tree = s.tree!;
+  if (isFile(node)) {
+    const i = node.leafIndex;
+    const imports = prep.out[i];
+    const importedBy = prep.inn[i];
+    const list = (title: string, xs: number[]) => (
+      <Stack gap={2}>
+        <Text size="xs" c="dimmed" tt="uppercase">
+          {title} ({xs.length})
+        </Text>
+        {xs.slice(0, compact ? 5 : 40).map((j) => (
+          <UnstyledButton key={j} onClick={() => onPick(tree.byLeaf[j])}>
+            <Text size="sm" c="#cfd8e0" truncate>
+              {prep.graph.nodes[j]}
+            </Text>
+          </UnstyledButton>
+        ))}
+        {xs.length > (compact ? 5 : 40) && (
+          <Text size="xs" c="dimmed">
+            … {xs.length - (compact ? 5 : 40)} more
+          </Text>
+        )}
+      </Stack>
+    );
+    return (
+      <Stack gap="xs">
+        <div>
+          <Text fw={600} c={ACCENT} style={{ wordBreak: "break-all" }}>
+            {node.label}
+          </Text>
+          <Text size="xs" c="dimmed" style={{ wordBreak: "break-all" }}>
+            {prep.graph.nodes[i]}
+          </Text>
+        </div>
+        {list("Imports", imports)}
+        {list("Imported by", importedBy)}
+      </Stack>
+    );
+  }
+  const k = node.children.length;
+  const sub = node.children.filter((c) => !isFile(c));
+  const files = node.children.filter(isFile);
+  const share = tree.total > 0 ? (100 * node.costShare) / tree.total : 0;
+  return (
+    <Stack gap="xs">
+      <div>
+        <Text fw={600} c={ACCENT}>
+          {node.label}
+        </Text>
+        <Text size="xs" c="dimmed" style={{ wordBreak: "break-all" }}>
+          {node.sublabel}
+        </Text>
+      </div>
+      <Group gap={6}>
+        <Badge variant="light" color="gray">
+          {node.leaves.length} files
+        </Badge>
+        <Badge variant="light" color="gray">
+          {sub.length} subgroups · {files.length} files direct
+        </Badge>
+        <Badge variant="light" color="lime">
+          {node.internalEdges} deps inside
+        </Badge>
+        <Badge variant="light" color="orange">
+          {node.edgesIn} in · {node.edgesOut} out
+        </Badge>
+      </Group>
+      <Text size="xs" c="dimmed">
+        k = {k}, crossed by {node.crossings} deps · pays {share.toFixed(1)}% of Total Cost
+      </Text>
+      {!compact && (
+        <Stack gap={2}>
+          <Text size="xs" c="dimmed" tt="uppercase">
+            Children
+          </Text>
+          {node.children.slice(0, 40).map((c) => (
+            <UnstyledButton key={c.id} onClick={() => onPick(c)}>
+              <Group gap={6} wrap="nowrap">
+                <Text size="sm" c={isFile(c) ? "#cfd8e0" : ACCENT} truncate>
+                  {isFile(c) ? c.label : `▸ ${c.label}`}
+                </Text>
+                {!isFile(c) && (
+                  <Text size="xs" c="dimmed">
+                    {c.leaves.length}
+                  </Text>
+                )}
+              </Group>
+            </UnstyledButton>
+          ))}
+          {node.children.length > 40 && (
+            <Text size="xs" c="dimmed">
+              … {node.children.length - 40} more
+            </Text>
+          )}
+        </Stack>
+      )}
+    </Stack>
+  );
+}
+
+/** Colour by how self-contained a group is: internal deps vs. deps crossing its boundary. */
+export function cohesionColor(n: OTNode): string {
+  if (n.leafIndex >= 0) return "#3a3f47";
+  const total = n.internalEdges + n.edgesIn + n.edgesOut;
+  const f = total === 0 ? 0.5 : n.internalEdges / total;
+  // red-ish (leaky) → lime (cohesive)
+  const r = Math.round(220 - f * 120);
+  const g = Math.round(110 + f * 110);
+  const b = Math.round(70 - f * 20);
+  return `rgb(${r},${g},${b})`;
+}
