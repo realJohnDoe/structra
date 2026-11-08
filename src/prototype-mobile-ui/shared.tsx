@@ -275,6 +275,48 @@ export function NodeDetails({
   );
 }
 
+export const OUT_COLOR = "#c8f060"; // selection imports it
+export const IN_COLOR = "#ff9a3c"; // it imports the selection
+
+export interface Flow {
+  out: number; // imports from the selection into this node
+  in: number; // imports from this node into the selection
+}
+
+/**
+ * Edges on tap: for a selected node, count its imports per visible node.
+ * Each foreign file is attributed to the deepest visible node containing it;
+ * files inside the selection, or only reachable via its ancestors, are skipped.
+ */
+export function edgeFlows(s: ProtoState, sel: OTNode | null, visible: Set<number>): Map<OTNode, Flow> {
+  const res = new Map<OTNode, Flow>();
+  if (!sel || !s.prep || !s.tree) return res;
+  const inSel = new Set(sel.leaves);
+  const ancestors = new Set<number>();
+  for (let a: OTNode | null = sel; a; a = a.parent) ancestors.add(a.id);
+  const target = (leaf: number): OTNode | null => {
+    let x: OTNode | null = s.tree!.byLeaf[leaf];
+    while (x && !visible.has(x.id)) x = x.parent;
+    if (!x || ancestors.has(x.id)) return null;
+    return x;
+  };
+  const bump = (n: OTNode | null, key: "out" | "in") => {
+    if (!n) return;
+    const f = res.get(n) ?? { out: 0, in: 0 };
+    f[key]++;
+    res.set(n, f);
+  };
+  for (const l of sel.leaves) {
+    for (const t of s.prep.out[l]) if (!inSel.has(t)) bump(target(t), "out");
+    for (const t of s.prep.inn[l]) if (!inSel.has(t)) bump(target(t), "in");
+  }
+  return res;
+}
+
+export function flowWidth(n: number) {
+  return Math.min(8, 1 + Math.log2(n));
+}
+
 /** Colour by how self-contained a group is: internal deps vs. deps crossing its boundary. */
 export function cohesionColor(n: OTNode): string {
   if (n.leafIndex >= 0) return "#3a3f47";

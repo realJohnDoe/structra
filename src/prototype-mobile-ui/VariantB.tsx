@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Chip, FileButton, Group, Text, UnstyledButton } from "@mantine/core";
 import { ChevronDown, ChevronRight, FileCode, Info, Upload } from "lucide-react";
 import { LambdaSlider } from "./LambdaSlider";
-import { ACCENT, BG, BG1, BORDER, EXAMPLES, NodeDetails, cohesionColor, isFile, pathTo } from "./shared";
+import { ACCENT, BG, BG1, BORDER, EXAMPLES, IN_COLOR, NodeDetails, OUT_COLOR, cohesionColor, edgeFlows, isFile, pathTo } from "./shared";
 import type { ProtoState } from "./shared";
 import type { OTNode } from "./optimizer";
 
@@ -36,6 +36,16 @@ export function VariantB({ s }: { s: ProtoState }) {
   };
 
   const total = s.tree?.root.leaves.length ?? 1;
+
+  // Edges on tap: which visible rows does the selection import from / get imported by?
+  const visible = new Set<number>();
+  const collect = (n: OTNode, depth: number) => {
+    visible.add(n.id);
+    if (isFile(n) || !(open.has(n.id) || depth === 0)) return;
+    n.children.slice(0, shown[n.id] ?? PAGE).forEach((c) => collect(c, depth + 1));
+  };
+  if (s.tree) collect(s.tree.root, 0);
+  const flows = edgeFlows(s, s.selected, visible);
 
   const rows: React.ReactNode[] = [];
   const walk = (n: OTNode, depth: number) => {
@@ -84,6 +94,12 @@ export function VariantB({ s }: { s: ProtoState }) {
                 </div>
               )}
             </div>
+            {flows.get(n) && (
+              <Text size="xs" fw={700} style={{ flexShrink: 0, whiteSpace: "nowrap" }}>
+                {flows.get(n)!.out > 0 && <span style={{ color: OUT_COLOR }}>→{flows.get(n)!.out} </span>}
+                {flows.get(n)!.in > 0 && <span style={{ color: IN_COLOR }}>←{flows.get(n)!.in}</span>}
+              </Text>
+            )}
             {!file && (
               <Text size="xs" c="dimmed" style={{ flexShrink: 0 }}>
                 {n.leaves.length}
@@ -157,6 +173,12 @@ export function VariantB({ s }: { s: ProtoState }) {
           </Text>
         )}
         <LambdaSlider s={s} />
+        {s.selected && (
+          <Text size="xs" c="dimmed" ta="center" mt={4}>
+            rows marked <span style={{ color: OUT_COLOR }}>→n</span> are imported by the selection,{" "}
+            <span style={{ color: IN_COLOR }}>←n</span> import it
+          </Text>
+        )}
       </div>
       {s.loading && (
         <Text c="dimmed" p="md">

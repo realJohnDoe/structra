@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { ActionIcon, FileButton, Group, ScrollArea, Select, Text, UnstyledButton } from "@mantine/core";
 import { Upload } from "lucide-react";
 import { LambdaSlider } from "./LambdaSlider";
-import { ACCENT, BG, BG1, BORDER, EXAMPLES, NodeDetails, cohesionColor, isFile, pathTo } from "./shared";
+import { ACCENT, BG, BG1, BORDER, EXAMPLES, IN_COLOR, NodeDetails, OUT_COLOR, cohesionColor, edgeFlows, flowWidth, isFile, pathTo } from "./shared";
 import type { ProtoState } from "./shared";
 import type { OTNode } from "./optimizer";
 
@@ -26,10 +26,19 @@ export function VariantA({ s }: { s: ProtoState }) {
     return () => ro.disconnect();
   }, []);
 
+  // Tap selects (and shows its imports); tapping the selected group again zooms in.
+  const tap = (n: OTNode) => {
+    if (s.selected?.id === n.id && !isFile(n) && n.id !== focus?.id) setFocusId(n.id);
+    else s.select(n);
+  };
+  // From the details list: select it and zoom so it sits one level below the focus.
   const pick = (n: OTNode) => {
     s.select(n);
-    if (!isFile(n)) setFocusId(n.id);
-    else if (n.parent) setFocusId(n.parent.id);
+    if (n.parent) setFocusId(n.parent.id);
+  };
+  const crumb = (n: OTNode) => {
+    setFocusId(n.id);
+    s.select(n);
   };
 
   const rects: { n: OTNode; x: number; y: number; w: number }[] = [];
@@ -45,6 +54,39 @@ export function VariantA({ s }: { s: ProtoState }) {
       }
     };
     lay(focus, 0, w, 0);
+  }
+  const pos = new Map(rects.map((r) => [r.n.id, r]));
+  const flows = edgeFlows(s, s.selected, new Set(pos.keys()));
+  const from = s.selected ? pos.get(s.selected.id) : undefined;
+  const H = ROW * LEVELS;
+  const arcs: React.ReactNode[] = [];
+  if (from) {
+    const fx = from.x + from.w / 2;
+    const fy = from.y + ROW / 2;
+    for (const [n, f] of flows) {
+      const t = pos.get(n.id)!;
+      const tx = t.x + t.w / 2;
+      const ty = t.y + ROW / 2;
+      const bow = Math.min(H - 4, Math.max(fy, ty) + 18 + Math.abs(tx - fx) * 0.25);
+      for (const [count, color, off] of [
+        [f.out, OUT_COLOR, -2],
+        [f.in, IN_COLOR, 2],
+      ] as const) {
+        if (!count) continue;
+        arcs.push(
+          <path
+            key={`${n.id}-${color}`}
+            d={`M${fx + off},${fy} Q${(fx + tx) / 2},${bow + off} ${tx + off},${ty}`}
+            fill="none"
+            stroke={color}
+            strokeWidth={flowWidth(count)}
+            strokeOpacity={0.9}
+            strokeLinecap="round"
+            style={{ pointerEvents: "none" }}
+          />,
+        );
+      }
+    }
   }
 
   return (
@@ -84,7 +126,7 @@ export function VariantA({ s }: { s: ProtoState }) {
           {focus &&
             pathTo(focus).map((n, i, arr) => (
               <Group key={n.id} gap={4} wrap="nowrap">
-                <UnstyledButton onClick={() => pick(n)}>
+                <UnstyledButton onClick={() => crumb(n)}>
                   <Text size="xs" c={i === arr.length - 1 ? ACCENT : "dimmed"} style={{ whiteSpace: "nowrap" }}>
                     {i === 0 ? "root" : n.label}
                   </Text>
@@ -104,7 +146,7 @@ export function VariantA({ s }: { s: ProtoState }) {
           {rects.map(({ n, x, y, w: rw }) => {
             const sel = s.selected?.id === n.id;
             return (
-              <g key={n.id} onClick={() => pick(n)} style={{ cursor: "pointer" }}>
+              <g key={n.id} onClick={() => tap(n)} style={{ cursor: "pointer" }}>
                 <rect
                   x={x + 0.5}
                   y={y + 0.5}
@@ -129,6 +171,7 @@ export function VariantA({ s }: { s: ProtoState }) {
               </g>
             );
           })}
+          {arcs}
         </svg>
       </div>
 
@@ -138,7 +181,7 @@ export function VariantA({ s }: { s: ProtoState }) {
           <NodeDetails s={s} node={s.selected} onPick={pick} />
         ) : (
           <Text size="sm" c="dimmed">
-            Tap a block to zoom in and see its details. Colour: lime = self-contained group, red = leaky.
+            Tap a block to select it and see its imports (lime line = imports, orange = imported by); tap it again to zoom in. Block colour: lime = self-contained group, red = leaky.
           </Text>
         )}
       </ScrollArea>

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { ActionIcon, Button, Drawer, FileButton, Group, Stack, Text, UnstyledButton } from "@mantine/core";
 import { Menu, Upload } from "lucide-react";
 import { LambdaSlider } from "./LambdaSlider";
-import { ACCENT, BG, BG1, BORDER, EXAMPLES, NodeDetails, cohesionColor, isFile } from "./shared";
+import { ACCENT, BG, BG1, BORDER, EXAMPLES, IN_COLOR, NodeDetails, OUT_COLOR, cohesionColor, edgeFlows, flowWidth, isFile } from "./shared";
 import type { ProtoState } from "./shared";
 import type { OTNode } from "./optimizer";
 
@@ -31,9 +31,10 @@ export function VariantC({ s }: { s: ProtoState }) {
   const r0 = R * 0.24;
   const ring = (R - r0) / RINGS;
 
+  // Tap selects (and shows its imports as chords); tapping the selection again zooms in.
   const tap = (n: OTNode) => {
-    s.select(n);
-    if (!isFile(n) && n.id !== focus?.id) setFocusId(n.id);
+    if (s.selected?.id === n.id && !isFile(n) && n.id !== focus?.id) setFocusId(n.id);
+    else s.select(n);
   };
   const pick = (n: OTNode) => {
     s.select(n);
@@ -41,7 +42,9 @@ export function VariantC({ s }: { s: ProtoState }) {
   };
 
   const arcs: React.ReactNode[] = [];
+  const pos = new Map<number, { mid: number; ri: number }>();
   if (focus) {
+    pos.set(focus.id, { mid: 0, ri: 0 });
     const lay = (n: OTNode, a0: number, a1: number, level: number) => {
       for (const c of n.children) {
         const span = ((a1 - a0) * c.leaves.length) / n.leaves.length;
@@ -66,6 +69,7 @@ export function VariantC({ s }: { s: ProtoState }) {
         );
         const mid = (b0 + b1) / 2;
         const rm = (ri + ro) / 2;
+        pos.set(c.id, { mid, ri });
         if (span * rm > 34 && level < 2) {
           const x = rm * Math.sin(mid);
           const y = -rm * Math.cos(mid);
@@ -79,6 +83,35 @@ export function VariantC({ s }: { s: ProtoState }) {
       }
     };
     lay(focus, 0, Math.PI * 2, 0);
+  }
+  const chords: React.ReactNode[] = [];
+  const from = s.selected ? pos.get(s.selected.id) : undefined;
+  if (from) {
+    const P = (p: { mid: number; ri: number }, da = 0) => {
+      const r = Math.max(p.ri, r0);
+      return `${r * Math.sin(p.mid + da)},${-r * Math.cos(p.mid + da)}`;
+    };
+    for (const [n, f] of edgeFlows(s, s.selected, new Set(pos.keys()))) {
+      const to = pos.get(n.id)!;
+      for (const [count, color, da] of [
+        [f.out, OUT_COLOR, -0.01],
+        [f.in, IN_COLOR, 0.01],
+      ] as const) {
+        if (!count) continue;
+        chords.push(
+          <path
+            key={`${n.id}-${color}`}
+            d={`M${P(from, da)} Q0,0 ${P(to, da)}`}
+            fill="none"
+            stroke={color}
+            strokeWidth={flowWidth(count)}
+            strokeOpacity={0.85}
+            strokeLinecap="round"
+            style={{ pointerEvents: "none" }}
+          />,
+        );
+      }
+    }
   }
 
   return (
@@ -112,6 +145,7 @@ export function VariantC({ s }: { s: ProtoState }) {
                 tap to go up
               </text>
             )}
+            {chords}
           </svg>
         )}
       </div>
@@ -139,7 +173,7 @@ export function VariantC({ s }: { s: ProtoState }) {
           </Group>
         ) : (
           <Text size="xs" c="dimmed">
-            Tap a segment to zoom in. Lime = self-contained, red = leaky.
+            Tap a segment to see its imports (lime = imports, orange = imported by); tap again to zoom in.
           </Text>
         )}
       </UnstyledButton>
