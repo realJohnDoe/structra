@@ -18,19 +18,19 @@ All three Python-hosted CLIs share one uv project: one Graph File writer, one fi
 **CLI contract** (same for every Parser, following ordinary CLI conventions):
 
 ```
-structra-parse-<language> [PATH] [-o FILE] [--exclude GLOB]... [--repo URL]
+structra-parse-<language> [PATH] [-o FILE] [--exclude GLOB]...
 ```
 
 - `PATH` is the repository checkout to parse. It defaults to the current directory and must be the root of a git work tree.
-- **`meta.commit` and `meta.repo` are inferred from git**, not passed in:
+- **`meta.commit` and `meta.repo` are always inferred from git.** No flag sets or overrides them:
   - `commit` is the full SHA of `HEAD`.
   - The Parser refuses a dirty tree, where tracked files differ from `HEAD`, because then the output wouldn't match the commit it names.
   - `repo` is `remote.origin.url` normalized to `https://<host>/<owner>/<name>`. The scp-style and `ssh://` forms are rewritten, and a trailing `.git` and any credentials are stripped. The result is byte-identical whichever way the repo was cloned.
-  - `--repo URL` exists only for checkouts without an `origin` remote.
+  - A checkout without an `origin` remote is a fatal error, because a Graph File must name its repository.
 - The Graph File goes to stdout, or to `FILE` with `-o`. Diagnostics go to stderr only: warnings, per-file parse failures, and unresolved internal-looking imports with their counts.
 - **Exit codes:**
   - `0`: Graph File written. Files that failed to parse still count: each stays a node without outgoing edges, and the failure is reported on stderr.
-  - `1`: fatal. Not a git work tree, dirty tree, no inferable repo URL, or a tool or runtime failure.
+  - `1`: fatal. Not a git work tree, dirty tree, no `origin` remote, or a tool or runtime failure.
   - `2`: usage error.
 - `--help` and `--version` work as usual. The version never appears in the Graph File.
 
