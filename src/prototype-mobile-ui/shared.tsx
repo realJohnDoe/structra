@@ -58,8 +58,12 @@ export function useProtoState(): ProtoState {
     if (repoKey === "upload") return;
     let cancelled = false;
     setLoading(true);
-    fetch(`${import.meta.env.BASE_URL}prototype-examples/${repoKey}.graph.json`)
-      .then((r) => r.json())
+    // The single-file HTML build embeds the examples in window.__STRUCTRA_EXAMPLES__.
+    const embedded = (window as unknown as { __STRUCTRA_EXAMPLES__?: Record<string, GraphFile> }).__STRUCTRA_EXAMPLES__?.[repoKey];
+    (embedded
+      ? Promise.resolve(embedded)
+      : fetch(`${import.meta.env.BASE_URL}prototype-examples/${repoKey}.graph.json`).then((r) => r.json())
+    )
       .then((g: GraphFile) => {
         if (!cancelled) {
           setGraph(g);
