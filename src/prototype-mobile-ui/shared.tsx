@@ -318,22 +318,54 @@ export function flowWidth(n: number) {
 }
 
 export const FILE_COLOR = "#8a919c";
-const BRANCH_HUES = [205, 85, 30, 280, 165, 340, 50, 240];
-
 /**
- * Groups: one hue per branch directly below `top` (the current zoom), darker
- * with depth. Files: a neutral grey, so "colour = group, grey = file".
+ * Groups: the current zoom (`top`) gets the whole hue wheel; each group splits
+ * its parent's hue range among its child groups by file count and takes the
+ * middle of its share. So sibling groups always differ, and children stay close
+ * to their parent's hue. Darker with depth. Files: a neutral grey.
  */
+const colorCache = new WeakMap<OTNode, Map<number, string>>();
+
+function buildColors(top: OTNode): Map<number, string> {
+  const m = new Map<number, string>();
+  m.set(top.id, "hsl(80 10% 45%)");
+  const walk = (n: OTNode, h0: number, h1: number, below: number) => {
+    const groups = n.children.filter((c) => !isFile(c));
+    const total = groups.reduce((a, c) => a + c.leaves.length, 0);
+    let h = h0;
+    groups.forEach((c, i) => {
+      const w = ((h1 - h0) * c.leaves.length) / total;
+      const mid = h + w / 2;
+      // Alternate lightness a little so neighbours stay distinct when hue ranges get narrow.
+      const light = Math.max(34, 64 - below * 7 - (i % 2) * 6);
+      m.set(c.id, `hsl(${(mid + 200) % 360} 62% ${light}%)`);
+      walk(c, h, h + w, below + 1);
+      h += w;
+    });
+  };
+  walk(top, 0, 360, 0);
+  return m;
+}
+
 export function nodeColor(n: OTNode, top: OTNode): string {
   if (isFile(n)) return FILE_COLOR;
-  if (n.id === top.id) return "hsl(80 10% 45%)";
-  let b: OTNode = n;
-  while (b.parent && b.parent.id !== top.id) b = b.parent;
-  if (!b.parent) return "hsl(80 10% 45%)"; // not below top
-  const groups = top.children.filter((c) => !isFile(c));
-  const hue = BRANCH_HUES[Math.max(0, groups.indexOf(b)) % BRANCH_HUES.length];
-  const below = n.depth - b.depth;
-  return `hsl(${hue} 65% ${Math.max(32, 62 - below * 8)}%)`;
+  let m = colorCache.get(top);
+  if (!m) {
+    m = buildColors(top);
+    colorCache.set(top, m);
+  }
+  return m.get(n.id) ?? "hsl(80 10% 45%)";
+}
+
+/** Lowest common ancestor of two nodes of the same tree. */
+export function lca(a: OTNode, b: OTNode): OTNode {
+  let x: OTNode = a;
+  let y: OTNode = b;
+  while (x !== y) {
+    if (x.depth >= y.depth) x = x.parent!;
+    else y = y.parent!;
+  }
+  return x;
 }
 
 /** Colour by how self-contained a group is: internal deps vs. deps crossing its boundary. */

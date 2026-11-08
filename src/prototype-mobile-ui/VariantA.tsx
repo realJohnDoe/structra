@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { ActionIcon, FileButton, Group, ScrollArea, Select, Text, UnstyledButton } from "@mantine/core";
 import { Upload } from "lucide-react";
 import { LambdaSlider } from "./LambdaSlider";
-import { ACCENT, BG, BG1, BORDER, EXAMPLES, IN_COLOR, NodeDetails, OUT_COLOR, FILE_COLOR, edgeFlows, nodeColor, flowWidth, isFile, pathTo } from "./shared";
+import { ACCENT, BG, BG1, BORDER, EXAMPLES, IN_COLOR, NodeDetails, OUT_COLOR, FILE_COLOR, edgeFlows, lca, nodeColor, flowWidth, isFile, pathTo } from "./shared";
 import type { ProtoState } from "./shared";
 import type { OTNode } from "./optimizer";
 
@@ -67,7 +67,11 @@ export function VariantA({ s }: { s: ProtoState }) {
       const t = pos.get(n.id)!;
       const tx = t.x + t.w / 2;
       const ty = t.y + ROW / 2;
-      const bow = Math.min(H - 4, Math.max(fy, ty) + 18 + Math.abs(tx - fx) * 0.25);
+      // Rise to the lowest common ancestor's row: the highest node this import crosses.
+      const anc = lca(s.selected!, n);
+      const apex = (anc.depth - focus!.depth) * ROW + ROW / 2;
+      const bow = 2 * apex - (fy + ty) / 2; // quadratic Bézier peaks at the apex
+      void H;
       for (const [count, color, off] of [
         [f.out, OUT_COLOR, -2],
         [f.in, IN_COLOR, 2],
@@ -79,8 +83,8 @@ export function VariantA({ s }: { s: ProtoState }) {
             d={`M${fx + off},${fy} Q${(fx + tx) / 2},${bow + off} ${tx + off},${ty}`}
             fill="none"
             stroke={color}
-            strokeWidth={flowWidth(count)}
-            strokeOpacity={0.9}
+            strokeWidth={flowWidth(count) * (flows.size > 20 ? 0.4 : 1)}
+            strokeOpacity={flows.size > 20 ? 0.45 : 0.9}
             strokeLinecap="round"
             style={{ pointerEvents: "none" }}
           />,

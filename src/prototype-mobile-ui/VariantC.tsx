@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { ActionIcon, Button, Drawer, FileButton, Group, Stack, Text, UnstyledButton } from "@mantine/core";
 import { Menu, Upload } from "lucide-react";
 import { LambdaSlider } from "./LambdaSlider";
-import { ACCENT, BG, BG1, BORDER, EXAMPLES, IN_COLOR, NodeDetails, OUT_COLOR, FILE_COLOR, edgeFlows, nodeColor, flowWidth, isFile } from "./shared";
+import { ACCENT, BG, BG1, BORDER, EXAMPLES, IN_COLOR, NodeDetails, OUT_COLOR, FILE_COLOR, edgeFlows, lca, nodeColor, flowWidth, isFile } from "./shared";
 import type { ProtoState } from "./shared";
 import type { OTNode } from "./optimizer";
 
@@ -90,7 +90,28 @@ export function VariantC({ s }: { s: ProtoState }) {
       const r = Math.max(p.ri, r0);
       return `${r * Math.sin(p.mid + da)},${-r * Math.cos(p.mid + da)}`;
     };
-    for (const [n, f] of edgeFlows(s, s.selected, new Set(pos.keys()))) {
+    // Dip in to the lowest common ancestor's ring (the centre if it is the current view).
+    const xy = (p: { mid: number; ri: number }) => {
+      const r = Math.max(p.ri, r0);
+      return [r * Math.sin(p.mid), -r * Math.cos(p.mid)];
+    };
+    const ctrl = (n: OTNode) => {
+      const anc = lca(s.selected!, n);
+      const to = pos.get(n.id)!;
+      const [x0, y0] = xy(from);
+      const [x1, y1] = xy(to);
+      if (anc.id === focus!.id) return `${(x0 + x1) / 8},${(y0 + y1) / 8}`;
+      const pa = pos.get(anc.id)!;
+      const rApex = pa.ri + ring / 2;
+      let mx = x0 + x1;
+      let my = y0 + y1;
+      const len = Math.hypot(mx, my) || 1;
+      mx = (mx / len) * rApex;
+      my = (my / len) * rApex;
+      return `${2 * mx - (x0 + x1) / 2},${2 * my - (y0 + y1) / 2}`;
+    };
+    const flows = edgeFlows(s, s.selected, new Set(pos.keys()));
+    for (const [n, f] of flows) {
       const to = pos.get(n.id)!;
       for (const [count, color, da] of [
         [f.out, OUT_COLOR, -0.01],
@@ -100,11 +121,11 @@ export function VariantC({ s }: { s: ProtoState }) {
         chords.push(
           <path
             key={`${n.id}-${color}`}
-            d={`M${P(from, da)} Q0,0 ${P(to, da)}`}
+            d={`M${P(from, da)} Q${ctrl(n)} ${P(to, da)}`}
             fill="none"
             stroke={color}
-            strokeWidth={flowWidth(count)}
-            strokeOpacity={0.85}
+            strokeWidth={flowWidth(count) * (flows.size > 20 ? 0.4 : 1)}
+            strokeOpacity={flows.size > 20 ? 0.45 : 0.85}
             strokeLinecap="round"
             style={{ pointerEvents: "none" }}
           />,
