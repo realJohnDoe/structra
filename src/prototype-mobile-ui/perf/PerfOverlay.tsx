@@ -4,7 +4,8 @@
 // "Run" steps λ 0 → 1 by 0.05 (fresh steps, so uncached) and reports median / max.
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { perfHook } from "../optimizer";
-import { readParam, type ProtoState } from "../shared";
+void perfHook;
+import { readParam, writeParam, type ProtoState } from "../shared";
 import { perf } from "./pipeline";
 
 const afterPaint = (f: () => void) => requestAnimationFrame(() => setTimeout(f, 0));
@@ -14,6 +15,13 @@ interface Redraw { lambda: number; total: number; opt: number }
 
 export function PerfOverlay({ s }: { s: ProtoState }) {
   const [open, setOpen] = useState(true);
+  // Settings in React state: the React Compiler memoizes plain readParam() reads.
+  const [cfg, setCfg] = useState(() => ({ pipe: readParam("pipe") ?? "shipped", live: readParam("live") ?? "", nodecache: readParam("nodecache") ?? "", cache: readParam("cache") ?? "" }));
+  const set = (k: keyof typeof cfg, v: string | null) => {
+    writeParam(k, v);
+    setCfg({ ...cfg, [k]: v ?? "" });
+    s.reload();
+  };
   const [first, setFirst] = useState<{ fromPage: number; fromFetch: number; marks: Record<string, number> } | null>(null);
   const [last, setLast] = useState<Redraw | null>(null);
   const [run, setRun] = useState<{ redraws: Redraw[]; done: boolean } | null>(null);
@@ -21,9 +29,12 @@ export function PerfOverlay({ s }: { s: ProtoState }) {
   const waiter = useRef<((r: Redraw) => void) | null>(null);
 
   useEffect(() => {
-    firstDone.current = null;
+    if (s.prep) return;
+    firstDone.current = null; // a (re)load is in progress
     setFirst(null);
-  }, [s.repoKey]);
+    setRun(null);
+    setLast(null);
+  }, [s.prep]);
 
   useLayoutEffect(() => {
     if (!s.tree) return;
@@ -31,7 +42,7 @@ export function PerfOverlay({ s }: { s: ProtoState }) {
     const opt = perfHook.lastMaterialize;
     afterPaint(() => {
       const now = performance.now();
-      if (firstDone.current !== s.repoKey) {
+      if (firstDone.current === null) {
         firstDone.current = s.repoKey;
         setFirst({ fromPage: now, fromFetch: now - perf.loadStart, marks: { ...perf.marks } }); // a snapshot: the React Compiler memoizes reads of the mutable perf object
         return;
@@ -61,10 +72,10 @@ export function PerfOverlay({ s }: { s: ProtoState }) {
   };
 
   const q = (a: number[], p: number) => (a.length ? [...a].sort((x, y) => x - y)[Math.floor(p * (a.length - 1))] : 0);
-  const pipe = readParam("pipe") ?? "shipped";
+  const pipe = cfg.pipe;
   const lines = [
-    `repo=${s.repoKey} files=${s.prep?.dendro.n ?? "?"} pipe=${pipe}${readParam("live") === "1" ? " live" : ""}${perfHook.noCache ? " nocache" : ""}${perfHook.noNodeCache ? " nonodecache" : ""}`,
-    first ? `first tree: ${ms(first.fromPage)} from page start, ${ms(first.fromFetch)} from fetch` : "first tree: …",
+    `repo=${s.repoKey} files=${s.prep?.dendro.n ?? "?"} pipe=${pipe}${cfg.live === "1" ? " live" : ""}${cfg.cache === "0" ? " nocache" : ""}${cfg.nodecache === "0" ? " nonodecache" : ""}`,
+    first ? `first tree: ${ms(first.fromFetch)} from load start (page start: ${ms(first.fromPage)})` : "first tree: …",
     ...Object.entries(first?.marks ?? {}).map(([k, v]) => `  ${k}: ${ms(v)}`),
     last ? `last redraw λ=${last.lambda.toFixed(2)}: ${ms(last.total)} (optimizer ${ms(last.opt)}, render ${ms(last.total - last.opt)})` : "last redraw: move the slider",
   ];
@@ -81,10 +92,18 @@ export function PerfOverlay({ s }: { s: ProtoState }) {
         <button onClick={() => setOpen(!open)}>{open ? "hide" : "perf"}</button>
         {open && <button onClick={start} disabled={!s.tree || (run !== null && !run.done)}>Run λ 0→1</button>}
         {open && <button onClick={() => navigator.clipboard?.writeText(text)}>copy</button>}
-        {open && ["main", "worker", "shipped"].map((p) => (
-          <button key={p} style={{ fontWeight: p === pipe ? 700 : 400 }} onClick={() => { const u = new URL(location.href); u.searchParams.set("pipe", p); location.href = u.toString(); }}>{p}</button>
-        ))}
       </div>
+      {open && (
+        <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 4 }}>
+          {["main", "worker", "shipped"].map((p) => (
+            <button key={p} style={{ fontWeight: p === pipe ? 700 : 400 }} onClick={() => set("pipe", p)}>{p === pipe ? `[${p}]` : p}</button>
+          ))}
+          {([["live", "1", "live drag"], ["nodecache", "0", "no group cache"]] as const).map(([k, v, label]) => {
+            const on = cfg[k] === v;
+            return <button key={k} onClick={() => set(k, on ? null : v)}>{on ? `[${label}]` : label}</button>;
+          })}
+        </div>
+      )}
       {open && <pre style={{ margin: "4px 0 0", whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{text}</pre>}
     </div>
   );

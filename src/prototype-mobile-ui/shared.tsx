@@ -17,15 +17,22 @@ export const BG = "#0f0f0f";
 export const BG1 = "#171717";
 export const BORDER = "#2a2a2a";
 
+// PROTOTYPE (perf ticket): params live in memory, seeded from the URL, because an Artifact page gets no query string.
+const params = new URLSearchParams(window.location.search);
 export function readParam(name: string): string | null {
-  return new URLSearchParams(window.location.search).get(name);
+  return params.get(name);
 }
 
 export function writeParam(name: string, value: string | null) {
-  const u = new URL(window.location.href);
-  if (value === null) u.searchParams.delete(name);
-  else u.searchParams.set(name, value);
-  window.history.replaceState(null, "", u);
+  if (value === null) params.delete(name);
+  else params.set(name, value);
+  try {
+    const u = new URL(window.location.href);
+    u.search = params.toString();
+    window.history.replaceState(null, "", u);
+  } catch {
+    /* sandboxed frame: memory only */
+  }
 }
 
 export interface ProtoState {
@@ -45,10 +52,11 @@ export interface ProtoState {
   selected: OTNode | null;
   select: (n: OTNode | null) => void;
   resolve: (id: number | null) => OTNode | null; // id → surviving node or ancestor
+  reload: () => void; // PROTOTYPE (perf ticket): reload the current repo with the current params
 }
 
 export function useProtoState(opts?: OptimizerOptions): ProtoState {
-  const [repoKey, setRepoKey] = useState(readParam("repo") ?? "flask");
+  const [repoKey, setRepoKey] = useState(readParam("repo") ?? "react") // PROTOTYPE (perf ticket): react by default;
   const [graph, setGraph] = useState<GraphFile | null>(null);
   const [loading, setLoading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -56,6 +64,7 @@ export function useProtoState(opts?: OptimizerOptions): ProtoState {
   const [committed, setCommitted] = useState(lambda);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const artRef = useRef<PerfArtifacts | null>(null);
+  const [nonce, setNonce] = useState(0);
 
   useEffect(() => {
     if (repoKey === "upload") return;
@@ -87,7 +96,7 @@ export function useProtoState(opts?: OptimizerOptions): ProtoState {
     return () => {
       cancelled = true;
     };
-  }, [repoKey]);
+  }, [repoKey, nonce]);
 
   // PROTOTYPE (perf ticket): ?pipe=main|worker|shipped, ?live=1 (update while dragging on big repos), ?cache=0 (no per-λ tree cache), ?nodecache=0 (no per-group stats/labels cache).
   const [prep, setPrep] = useState<Prepared | null>(null);
@@ -104,7 +113,8 @@ export function useProtoState(opts?: OptimizerOptions): ProtoState {
       cancelled = true;
     };
   }, [graph, opts]);
-  const large = (graph?.nodes.length ?? 0) > 1000 && readParam("live") !== "1";
+  const live = readParam("live") === "1";
+  const large = (graph?.nodes.length ?? 0) > 1000 && !live;
   const tree = useMemo(() => (prep ? optimalTree(prep, large ? committed : lambda) : null), [prep, lambda, committed, large]);
   const byId = useMemo(() => {
     const m = new Map<number, OTNode>();
@@ -169,6 +179,10 @@ export function useProtoState(opts?: OptimizerOptions): ProtoState {
     selected: resolve(selectedId),
     select: (n) => setSelectedId(n ? n.id : null),
     resolve,
+    reload: () => {
+      setGraph(null);
+      setNonce((x) => x + 1);
+    },
   };
 }
 
