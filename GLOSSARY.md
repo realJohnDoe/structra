@@ -10,6 +10,8 @@
 
 **Optimal Tree**: The lowest-Total-Cost Tree Structra's optimizer finds for a given Balance, found by search rather than taken from the folder structure. A heuristic approximation: the true minimum over all Trees is infeasible to compute. Has no single-child internal nodes. Optimal Trees at different Balances are nested: the one at a higher Balance only splits groups of the one at a lower Balance, never moves files between them.
 
+**Folder Block**: A display-only block in the icicle that shows the files sitting directly in one group of the Optimal Tree that share a folder, usually the first folder level below the group's own. It isn't a group of the Optimal Tree and doesn't change the tree or its cost. When the folder has files elsewhere in the tree, the block says how many of them are here ("22 of 41 here"), never which group holds the rest.
+
 **Branching (k)**: The number of children of an internal node.
 
 **Node Cost**: Σ ln k over all internal nodes of a Tree. Penalizes having many decision points.
