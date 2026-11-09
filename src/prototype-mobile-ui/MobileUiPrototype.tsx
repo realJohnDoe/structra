@@ -21,8 +21,8 @@ const OPTS: { key: string; name: string; opts: OptimizerOptions }[] = [
 
 export function MobileUiPrototype() {
   const variant = readParam("variant") ?? "A";
-  const [opt, setOpt] = useState(() => readParam("opt") ?? "2");
-  const opts = useMemo(() => (OPTS.find((o) => o.key === opt) ?? OPTS[1]).opts, [opt]);
+  const [opt, setOpt] = useState(() => readParam("opt") ?? "3");
+  const opts = useMemo(() => (OPTS.find((o) => o.key === opt) ?? OPTS[2]).opts, [opt]);
   const s = useProtoState(opts);
   return (
     <>

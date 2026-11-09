@@ -73,7 +73,7 @@ export interface OptimizerOptions {
   contraction: "greedy" | "sweep"; // greedy per λ (ADR 0002 as written) or one sweep up λ = 0 → 1 with split-only moves
   looseByFolder: boolean; // display-only: bundle a group's loose files by folder
 }
-export const DEFAULT_OPTIONS: OptimizerOptions = { linkage: "parisSize", contraction: "sweep", looseByFolder: false };
+export const DEFAULT_OPTIONS: OptimizerOptions = { linkage: "parisVol", contraction: "sweep", looseByFolder: false };
 
 export interface Prepared {
   opts: OptimizerOptions;
