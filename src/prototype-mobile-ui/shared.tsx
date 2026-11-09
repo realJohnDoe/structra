@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Badge, Group, Stack, Text, UnstyledButton } from "@mantine/core";
 import { optimalTree, prepare } from "./optimizer";
-import type { GraphFile, OTNode, OptimalTree, Prepared } from "./optimizer";
+import type { GraphFile, OTNode, OptimalTree, OptimizerOptions, Prepared } from "./optimizer";
 
 export const EXAMPLES = [
   { key: "requests", name: "requests", hint: "37 files" },
@@ -45,7 +45,7 @@ export interface ProtoState {
   resolve: (id: number | null) => OTNode | null; // id → surviving node or ancestor
 }
 
-export function useProtoState(): ProtoState {
+export function useProtoState(opts?: OptimizerOptions): ProtoState {
   const [repoKey, setRepoKey] = useState(readParam("repo") ?? "flask");
   const [graph, setGraph] = useState<GraphFile | null>(null);
   const [loading, setLoading] = useState(false);
@@ -76,7 +76,7 @@ export function useProtoState(): ProtoState {
     };
   }, [repoKey]);
 
-  const prep = useMemo(() => (graph ? prepare(graph) : null), [graph]);
+  const prep = useMemo(() => (graph ? prepare(graph, opts) : null), [graph, opts]);
   const large = (graph?.nodes.length ?? 0) > 1000;
   const tree = useMemo(() => (prep ? optimalTree(prep, large ? committed : lambda) : null), [prep, lambda, committed, large]);
   const byId = useMemo(() => {
@@ -94,7 +94,7 @@ export function useProtoState(): ProtoState {
   const resolve = (id: number | null): OTNode | null => {
     if (id === null || !prep) return null;
     let x = id;
-    while (x >= 0 && !byId.has(x)) x = prep.dendro.parent[x];
+    while (x >= 0 && !byId.has(x)) x = x >= prep.dendro.parent.length ? (prep.synthParent.get(x) ?? -1) : prep.dendro.parent[x];
     return x >= 0 ? byId.get(x)! : null;
   };
 

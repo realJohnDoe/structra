@@ -396,7 +396,9 @@ export function VariantA({ s }: { s: ProtoState }) {
                   height={ROW - 1}
                   rx={3}
                   fill={colorOf(n)}
-                  stroke={sel ? "#fff" : "none"}
+                  fillOpacity={n.synthetic ? 0.55 : 1}
+                  stroke={sel ? "#fff" : n.synthetic ? "#0b0b0b" : "none"}
+                  strokeDasharray={n.synthetic && !sel ? "4 3" : undefined}
                   strokeWidth={2}
                 />
                 {rw > 44 && (
