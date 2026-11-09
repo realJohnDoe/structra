@@ -65,4 +65,4 @@ The serialization rules (key order, sorting, LF, trailing newline, one entry per
 
 - Two writers can drift apart. The conformance fixtures are the guard, so each toolchain needs a fixture that covers the writer's edge cases: an empty graph, a file without edges, non-ASCII paths, and paths that differ only in case.
 - The workspace-symlink pre-step of the TS Parser must not modify the checkout so that the next run sees a dirty tree. It writes only to ignored paths (`node_modules/`), or works in a temporary copy.
-- `data/*.dot` and `python/scripts/generate_dot.py` are superseded and get removed when the Parsers are built.
+- `data/*.dot` and `python/scripts/generate_dot.py` were superseded and have been removed.
