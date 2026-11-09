@@ -230,8 +230,12 @@ export function VariantA({ s, mode = "1" }: { s: ProtoState; mode?: FilesMode })
           lay(c, cx, c.leaves.length * per, level + 1);
           cx += c.leaves.length * per;
         }
-        if (small.length) restBlock("groups", small, `+${small.length} small groups`);
-        if (files.length && per < FILE_MIN) restBlock("files", files, `${files.length} files`);
+        // A "+1" block would be as wide as the one thing in it: draw that thing instead.
+        if (small.length === 1) {
+          lay(small[0], cx, small[0].leaves.length * per, level + 1);
+          cx += small[0].leaves.length * per;
+        } else if (small.length) restBlock("groups", small, `+${small.length} small groups`);
+        if (files.length > 1 && per < FILE_MIN) restBlock("files", files, `${files.length} files`);
         else layFiles(files);
         return;
       }
@@ -255,12 +259,22 @@ export function VariantA({ s, mode = "1" }: { s: ProtoState; mode?: FilesMode })
       layFiles(fitSingles);
       const narrowFiles = [...smallF.flatMap((b) => b.files), ...narrowSingles];
       const nFolders = smallF.length + narrowSingles.length;
+      // A "+1" block would be as wide as the one thing in it: draw that thing instead.
+      const drawOne = (gs: OTNode[], fs: Bucket[], ss: OTNode[]) => {
+        for (const g of gs) {
+          lay(g, cx, g.leaves.length * per, level + 1);
+          cx += g.leaves.length * per;
+        }
+        for (const b of fs) restBlock("folder", b.files, b.name, b);
+        layFiles(ss);
+      };
       if (mode === "2") {
-        if (smallG.length) restBlock("groups", smallG, `+${smallG.length} small groups`);
-        if (narrowFiles.length) restBlock("folders", narrowFiles, `+${nFolders} folders`);
-      } else if (smallG.length + narrowFiles.length) {
-        restBlock("more", [...smallG, ...narrowFiles], `+${smallG.length + nFolders} more`);
-      }
+        if (smallG.length === 1) drawOne(smallG, [], []);
+        else if (smallG.length) restBlock("groups", smallG, `+${smallG.length} small groups`);
+        if (nFolders === 1) drawOne([], smallF, narrowSingles);
+        else if (narrowFiles.length) restBlock("folders", narrowFiles, `+${nFolders} folders`);
+      } else if (smallG.length + nFolders === 1) drawOne(smallG, smallF, narrowSingles);
+      else if (smallG.length + nFolders) restBlock("more", [...smallG, ...narrowFiles], `+${smallG.length + nFolders} more`);
     };
     if (!grid) lay(focus, 0, w, 0, focusAsFolder);
   }
