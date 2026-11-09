@@ -25,10 +25,7 @@ Research findings go in `docs/research/<topic>.md`, and the ticket links to them
 
 ## Closing issues
 
-Close an issue directly, with a summary comment, once it is resolved. This covers a Wayfinder ticket that's resolved by its resolution comment. When closing a Wayfinder ticket, also add its line to the map's "Decisions so far".
+- **If resolving an issue produces changes to keep:** open a PR for them, and close the issue through it by putting `Closes #N` in the PR description. GitHub then closes it on merge.
+- **Otherwise:** close the issue directly, with a summary comment.
 
-If resolving an issue also pushes changes, open a PR for them as well.
-
-## Pull requests
-
-Whenever you push changes and the working branch has no PR yet, open one. If the PR completes a ticket that is still open, put `Closes #N` in its description.
+When a Wayfinder ticket closes, by either route, add its line to the map's "Decisions so far".
