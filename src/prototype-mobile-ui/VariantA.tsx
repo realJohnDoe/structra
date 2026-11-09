@@ -2,11 +2,11 @@
 // it, tap again to zoom in, breadcrumb to go back, details in a card under the chart,
 // λ pinned to the bottom. All imports between visible blocks are always drawn;
 // the selection's own imports are highlighted.
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Badge, Button, FileButton, Group, Menu, ScrollArea, Stack, Text, UnstyledButton } from "@mantine/core";
 import { ChevronDown, Upload } from "lucide-react";
 import { LambdaSlider } from "./LambdaSlider";
-import { ACCENT, BG, BG1, BORDER, EXAMPLES, FILE_COLOR, IN_COLOR, NodeDetails, OUT_COLOR, isFile, lca, nodeColor, pathTo } from "./shared";
+import { ACCENT, BG, BG1, BORDER, EXAMPLES, FILE_COLOR, IN_COLOR, NodeDetails, OUT_COLOR, isFile, lca, nodeColor, pathTo, readParam } from "./shared";
 import type { ProtoState } from "./shared";
 import type { OTNode } from "./optimizer";
 
@@ -17,12 +17,26 @@ const LEVELS = 4;
 const FILE_MIN = 12; // px: below this, a group's direct files fold into one "N files" block
 const GROUP_MIN = 6; // px: below this, groups fold into one "+N small groups" block
 
-// Display-only blocks: a group's own (direct) files, or its groups too narrow to
-// draw. Not Tree nodes: drawn hatched in the owner's colour; tap to list the contents.
+// Display-only blocks: a group's own (direct) files, its groups too narrow to
+// draw, or (ticket "Show a group's direct files by folder") one folder's direct
+// files, or the overflow of everything too narrow. Not Tree nodes; tap to list
+// the contents, tap again to open.
+//
+// `mode` (switchable via `?files=`, see MobileUiPrototype):
+//   1 today: hatched "N files" + hatched "+N small groups"
+//   2 folders, separate overflow: folder blocks; narrow groups stay hatched
+//     "+N small groups", narrow folders go to an outlined "+N folders"
+//   3 folders, one hatched "+N more" for every narrow group, folder and file
+//   4 folders, "+N more" drawn like a folder: solid = Optimal Tree group,
+//     outlined = display-only, nothing else
+type RestKind = "files" | "groups" | "folder" | "folders" | "more";
+export type FilesMode = "1" | "2" | "3" | "4";
 interface Rest {
-  kind: "files" | "groups";
+  kind: RestKind;
   owner: OTNode;
-  members: OTNode[];
+  members: OTNode[]; // real nodes: groups and files
+  folder?: Bucket; // kind "folder"
+  key: string; // stable identity across renders: owner|kind|folder
 }
 interface Block {
   n: OTNode; // the node, or a pseudo node standing in for a Rest block
@@ -31,15 +45,106 @@ interface Block {
   w: number;
   rest?: Rest;
 }
+// A folder's files that sit directly in one group. `direct`: the files directly in
+// `dir` (non-recursive); otherwise the files somewhere under `dir`.
+interface Bucket {
+  dir: string;
+  direct: boolean;
+  files: OTNode[];
+  total: number; // the repo's files in that same set (direct or recursive)
+  name: string; // short label, e.g. "json/"
+}
+const isOutlined = (k: RestKind, mode: FilesMode) => k === "folder" || k === "folders" || (k === "more" && mode === "4");
 
-export function VariantA({ s }: { s: ProtoState }) {
+const dirOf = (p: string) => p.split("/").slice(0, -1).join("/");
+function folderCounts(paths: string[]) {
+  const direct = new Map<string, number>();
+  const rec = new Map<string, number>();
+  for (const p of paths) {
+    const d = dirOf(p);
+    direct.set(d, (direct.get(d) ?? 0) + 1);
+    const parts = d ? d.split("/") : [];
+    for (let i = 0; i <= parts.length; i++) {
+      const k = parts.slice(0, i).join("/");
+      rec.set(k, (rec.get(k) ?? 0) + 1);
+    }
+  }
+  return { direct, rec };
+}
+
+// Bucket a group's direct files by folder. "top": one bucket per first folder level
+// below the group's own folder (plus one for files directly in it), narrowed to the
+// deepest folder its files share. "own": one bucket per file's own folder.
+function bucketFiles(
+  files: OTNode[],
+  prefix: string,
+  paths: string[],
+  counts: ReturnType<typeof folderCounts>,
+  how: "top" | "own",
+): Bucket[] {
+  const m = new Map<string, { direct: boolean; files: OTNode[] }>();
+  for (const f of files) {
+    const d = dirOf(paths[f.leafIndex]);
+    let key: string;
+    let direct: boolean;
+    if (how === "own" || d === prefix || !(prefix === "" || d.startsWith(prefix + "/"))) {
+      key = d;
+      direct = true;
+    } else {
+      const rel = prefix ? d.slice(prefix.length + 1) : d;
+      key = (prefix ? prefix + "/" : "") + rel.split("/")[0];
+      direct = false;
+    }
+    const b = m.get(key) ?? { direct, files: [] };
+    b.files.push(f);
+    m.set(key, b);
+  }
+  const out: Bucket[] = [];
+  for (const [key, b] of m) {
+    let dir = key;
+    if (!b.direct) {
+      const dirs = b.files.map((f) => dirOf(paths[f.leafIndex]).split("/"));
+      let c = dirs[0].length;
+      for (const d of dirs) {
+        let j = 0;
+        while (j < c && j < d.length && d[j] === dirs[0][j]) j++;
+        c = j;
+      }
+      dir = dirs[0].slice(0, c).join("/");
+    }
+    const direct = b.direct || b.files.every((f) => dirOf(paths[f.leafIndex]) === dir);
+    const rel = prefix && dir.startsWith(prefix + "/") ? dir.slice(prefix.length + 1) : dir.split("/").pop() || "(repo root)";
+    out.push({
+      dir,
+      direct,
+      files: b.files,
+      total: (direct ? counts.direct.get(dir) : counts.rec.get(dir)) ?? b.files.length,
+      name: `${rel}/`,
+    });
+  }
+  out.sort((a, b) => b.files.length - a.files.length || (a.dir < b.dir ? -1 : 1));
+  return out;
+}
+// Shorter forms when the block is narrow: "22 of 41 here" → "22 of 41" → "22/41".
+const fitHere = (b: Bucket, w: number) => {
+  const max = Math.floor((w - 10) / 6);
+  for (const t of [hereText(b), b.files.length === b.total ? `all ${b.total}` : `${b.files.length} of ${b.total}`, `${b.files.length}/${b.total}`])
+    if (t.length <= max) return t;
+  return `${b.files.length}/${b.total}`;
+};
+const hereText = (b: Bucket) => (b.files.length === b.total ? `all ${b.total}` : `${b.files.length} of ${b.total} here`);
+
+export function VariantA({ s, mode = "1" }: { s: ProtoState; mode?: FilesMode }) {
   const [focusId, setFocusId] = useState<number | null>(null);
   const [w, setW] = useState(360);
-  const [restSel, setRestSel] = useState<{ owner: number; kind: Rest["kind"] } | null>(null);
-  // An opened hatched block: it becomes the current view, with its members as children.
-  const [opened, setOpened] = useState<{ owner: number; kind: Rest["kind"]; members: number[] } | null>(null);
+  const [restSel, setRestSel] = useState<string | null>(null); // Rest.key
+  // An opened display-only block: it becomes the current view, with its members as children.
+  const [opened, setOpened] = useState<{ owner: number; kind: RestKind; members: number[]; label: string; asFolder: boolean } | null>(null);
+  const how = readParam("folders") === "own" ? "own" : "top";
+  const counts = useMemo(() => (s.prep ? folderCounts(s.prep.graph.nodes) : null), [s.prep]);
   const zoomed = s.resolve(focusId) ?? s.tree?.root ?? null;
   let focus: OTNode | null = zoomed;
+  let focusAsFolder = false;
   let grid = false; // opened files too narrow for blocks: show them as a tile grid
   if (opened && s.tree) {
     const owner = s.byId.get(opened.owner);
@@ -47,15 +152,16 @@ export function VariantA({ s }: { s: ProtoState }) {
     if (owner && members.length) {
       focus = {
         ...owner,
-        id: -(owner.id * 2 + (opened.kind === "files" ? 1 : 2)),
+        id: -(owner.id * 2 + (opened.kind === "groups" ? 2 : 1)),
         parent: owner,
         depth: owner.depth + 1,
         children: members,
         leaves: members.flatMap((m) => m.leaves),
         leafIndex: -1,
-        label: opened.kind === "files" ? `${members.length} files` : `${members.length} small groups`,
+        label: opened.label,
       };
-      grid = opened.kind === "files" && w / members.length < FILE_MIN;
+      focusAsFolder = opened.asFolder;
+      grid = members.every(isFile) && (mode === "1" || focusAsFolder) && w / members.length < FILE_MIN;
     }
   }
   const ref = useRef<HTMLDivElement>(null);
@@ -70,45 +176,88 @@ export function VariantA({ s }: { s: ProtoState }) {
   // ---- layout ----
   const blocks: Block[] = [];
   const redirect = new Map<number, OTNode>(); // folded node id → its Rest pseudo node
+  let standId = -1_000_000;
   if (focus) {
-    const lay = (n: OTNode, x: number, width: number, level: number) => {
+    const paths = s.prep!.graph.nodes;
+    const lay = (n: OTNode, x: number, width: number, level: number, asFolder = false) => {
       blocks.push({ n, x, y: level * ROW, w: width });
       if (level + 1 >= LEVELS) return;
       const per = width / n.leaves.length; // px per file
       const groups = n.children.filter((c) => !isFile(c));
       const files = n.children.filter(isFile);
-      const big = groups.filter((g) => g.leaves.length * per >= GROUP_MIN);
-      const small = groups.filter((g) => g.leaves.length * per < GROUP_MIN);
       let cx = x;
-      for (const c of big) {
-        lay(c, cx, c.leaves.length * per, level + 1);
-        cx += c.leaves.length * per;
-      }
-      const restBlock = (kind: Rest["kind"], members: OTNode[]) => {
+      const restBlock = (kind: RestKind, members: OTNode[], label: string, folder?: Bucket) => {
         const leaves = members.flatMap((m) => m.leaves);
         const stand: OTNode = {
           ...n,
-          id: -(n.id * 2 + (kind === "files" ? 1 : 2)),
+          id: standId--,
           parent: n,
           depth: n.depth + 1,
           children: [],
           leaves,
           leafIndex: -1,
-          label: kind === "files" ? `${members.length} files` : `+${members.length} small groups`,
+          label,
         };
-        for (const m of members) redirect.set(m.id, stand);
-        blocks.push({ n: stand, x: cx, y: (level + 1) * ROW, w: leaves.length * per, rest: { kind, owner: n, members } });
-        cx += leaves.length * per;
+        const rw = leaves.length * per;
+        const key = `${n.id}|${kind}|${folder?.dir ?? ""}`;
+        blocks.push({ n: stand, x: cx, y: (level + 1) * ROW, w: rw, rest: { kind, owner: n, members, folder, key } });
+        // A folder's files are drawn under it when they fit; otherwise they fold into it.
+        if (kind === "folder" && per >= FILE_MIN && level + 2 < LEVELS) {
+          let fx = cx;
+          for (const f of members) {
+            blocks.push({ n: f, x: fx, y: (level + 2) * ROW, w: per });
+            fx += per;
+          }
+        } else for (const m of members) redirect.set(m.id, stand);
+        cx += rw;
       };
-      if (small.length) restBlock("groups", small);
-      if (files.length && per < FILE_MIN) restBlock("files", files);
-      else
-        for (const f of files) {
+      const layFiles = (fs: OTNode[]) => {
+        for (const f of fs) {
           lay(f, cx, per, level + 1);
           cx += per;
         }
+      };
+
+      if (mode === "1" || asFolder) {
+        const big = groups.filter((g) => g.leaves.length * per >= GROUP_MIN);
+        const small = groups.filter((g) => g.leaves.length * per < GROUP_MIN);
+        for (const c of big) {
+          lay(c, cx, c.leaves.length * per, level + 1);
+          cx += c.leaves.length * per;
+        }
+        if (small.length) restBlock("groups", small, `+${small.length} small groups`);
+        if (files.length && per < FILE_MIN) restBlock("files", files, `${files.length} files`);
+        else layFiles(files);
+        return;
+      }
+
+      // Modes 2–4: direct files by folder; a single-file folder is just the file.
+      const buckets = bucketFiles(files, n.prefix, paths, counts!, how);
+      const folders = buckets.filter((b) => b.files.length > 1);
+      const singles = buckets.filter((b) => b.files.length === 1).map((b) => b.files[0]);
+      const fits = (k: number) => k * per >= GROUP_MIN;
+      const bigG = groups.filter((g) => fits(g.leaves.length));
+      const smallG = groups.filter((g) => !fits(g.leaves.length));
+      const bigF = folders.filter((b) => fits(b.files.length));
+      const smallF = folders.filter((b) => !fits(b.files.length));
+      const fitSingles = per >= FILE_MIN ? singles : [];
+      const narrowSingles = per >= FILE_MIN ? [] : singles;
+      for (const c of bigG) {
+        lay(c, cx, c.leaves.length * per, level + 1);
+        cx += c.leaves.length * per;
+      }
+      for (const b of bigF) restBlock("folder", b.files, b.name, b);
+      layFiles(fitSingles);
+      const narrowFiles = [...smallF.flatMap((b) => b.files), ...narrowSingles];
+      const nFolders = smallF.length + narrowSingles.length;
+      if (mode === "2") {
+        if (smallG.length) restBlock("groups", smallG, `+${smallG.length} small groups`);
+        if (narrowFiles.length) restBlock("folders", narrowFiles, `+${nFolders} folders`);
+      } else if (smallG.length + narrowFiles.length) {
+        restBlock("more", [...smallG, ...narrowFiles], `+${smallG.length + nFolders} more`);
+      }
     };
-    if (!grid) lay(focus, 0, w, 0);
+    if (!grid) lay(focus, 0, w, 0, focusAsFolder);
   }
   const pos = new Map(blocks.map((b) => [b.n.id, b]));
   // Colours come from the whole tree, not the current zoom, so a group keeps its
@@ -116,7 +265,7 @@ export function VariantA({ s }: { s: ProtoState }) {
   const colorOf = (n: OTNode) => nodeColor(n.id < 0 && n.parent ? n.parent : n, s.tree!.root);
 
   // ---- selection ----
-  const selRest = restSel ? blocks.find((b) => b.rest && b.rest.owner.id === restSel.owner && b.rest.kind === restSel.kind) : undefined;
+  const selRest = restSel ? blocks.find((b) => b.rest && b.rest.key === restSel) : undefined;
   const active: OTNode | null = selRest ? selRest.n : s.selected;
   const activeLeaves = new Set(active ? active.leaves : []);
   // The block that stands for the selection (itself, or the Rest block it is folded into).
@@ -129,14 +278,16 @@ export function VariantA({ s }: { s: ProtoState }) {
       setFocusId(n.id);
     } else s.select(n);
   };
-  // Tap a hatched block to select it (lists its contents); tap again to open it.
-  const tapRest = (r: Rest) => {
+  // Tap a display-only block to select it (lists its contents); tap again to open it.
+  const tapRest = (r: Rest, stand: OTNode) => {
     s.select(null);
-    if (restSel && restSel.owner === r.owner.id && restSel.kind === r.kind) {
+    if (restSel === r.key) {
       setRestSel(null);
-      setFocusId(r.owner.id);
-      setOpened({ owner: r.owner.id, kind: r.kind, members: r.members.map((m) => m.id) });
-    } else setRestSel({ owner: r.owner.id, kind: r.kind });
+      const owner = r.owner.id < 0 && opened ? opened.owner : r.owner.id; // nested in an opened block
+      setFocusId(owner);
+      const label = r.kind === "folder" && r.folder ? `${r.folder.name} · ${hereText(r.folder)}` : stand.label.replace(/^\+/, "");
+      setOpened({ owner, kind: r.kind, members: r.members.map((m) => m.id), label, asFolder: r.kind === "folder" });
+    } else setRestSel(r.key);
   };
   // From a details list: select it and zoom so it sits one level below the focus.
   const pick = (n: OTNode) => {
@@ -365,9 +516,38 @@ export function VariantA({ s }: { s: ProtoState }) {
           </defs>
           {blocks.map(({ n, x, y, w: rw, rest }) => {
             const sel = activeBlockId === n.id;
+            if (rest && isOutlined(rest.kind, mode)) {
+              const c = colorOf(rest.owner);
+              const sub = rest.folder ? fitHere(rest.folder, rw) : `${n.leaves.length} files`;
+              return (
+                <g key={rest.key} onClick={() => tapRest(rest, n)} style={{ cursor: "pointer" }}>
+                  <rect
+                    x={x + 1.5}
+                    y={y + 1.5}
+                    width={Math.max(0, rw - 3)}
+                    height={ROW - 3}
+                    rx={3}
+                    fill={c}
+                    fillOpacity={0.16}
+                    stroke={sel ? "#fff" : c}
+                    strokeWidth={sel ? 2 : 1.5}
+                  />
+                  {rw > 30 && (
+                    <text x={x + 6} y={y + 18} fontSize={12} fill="#e8e8e8" fontWeight={600} style={{ pointerEvents: "none" }}>
+                      {clip(n.label, rw)}
+                    </text>
+                  )}
+                  {rw > 44 && (
+                    <text x={x + 6} y={y + 34} fontSize={10} fill="#bbb" style={{ pointerEvents: "none" }}>
+                      {clip(sub, rw)}
+                    </text>
+                  )}
+                </g>
+              );
+            }
             if (rest) {
               return (
-                <g key={n.id} onClick={() => tapRest(rest)} style={{ cursor: "pointer" }}>
+                <g key={rest.key} onClick={() => tapRest(rest, n)} style={{ cursor: "pointer" }}>
                   <rect x={x + 0.5} y={y + 0.5} width={Math.max(0, rw - 1)} height={ROW - 1} rx={3} fill={colorOf(rest.owner)} fillOpacity={0.45} />
                   <rect
                     x={x + 0.5}
@@ -388,7 +568,7 @@ export function VariantA({ s }: { s: ProtoState }) {
               );
             }
             return (
-              <g key={n.id} onClick={() => tap(n)} style={{ cursor: "pointer" }}>
+              <g key={`${n.id}@${y}`} onClick={() => tap(n)} style={{ cursor: "pointer" }}>
                 <rect
                   x={x + 0.5}
                   y={y + 0.5}
@@ -396,18 +576,18 @@ export function VariantA({ s }: { s: ProtoState }) {
                   height={ROW - 1}
                   rx={3}
                   fill={colorOf(n)}
-                  fillOpacity={n.synthetic ? 0.55 : 1}
-                  stroke={sel ? "#fff" : n.synthetic ? "#0b0b0b" : "none"}
+                  fillOpacity={n.synthetic ? 0.55 : focusAsFolder && n.id === focus?.id ? 0.16 : 1}
+                  stroke={sel ? "#fff" : n.synthetic ? "#0b0b0b" : focusAsFolder && n.id === focus?.id ? colorOf(n) : "none"}
                   strokeDasharray={n.synthetic && !sel ? "4 3" : undefined}
                   strokeWidth={2}
                 />
                 {rw > 44 && (
-                  <text x={x + 6} y={y + 18} fontSize={12} fill="#0b0b0b" fontWeight={600} style={{ pointerEvents: "none" }}>
+                  <text x={x + 6} y={y + 18} fontSize={12} fill={focusAsFolder && n.id === focus?.id ? "#e8e8e8" : "#0b0b0b"} fontWeight={600} style={{ pointerEvents: "none" }}>
                     {clip(n.label, rw)}
                   </text>
                 )}
                 {rw > 44 && !isFile(n) && (
-                  <text x={x + 6} y={y + 34} fontSize={10} fill="#0b0b0b" style={{ pointerEvents: "none" }}>
+                  <text x={x + 6} y={y + 34} fontSize={10} fill={focusAsFolder && n.id === focus?.id ? "#bbb" : "#0b0b0b"} style={{ pointerEvents: "none" }}>
                     {n.leaves.length} files
                   </text>
                 )}
@@ -428,9 +608,13 @@ export function VariantA({ s }: { s: ProtoState }) {
           <Text size="sm" c="dimmed">
             Tap a block to select it, tap again to zoom in (or, for a hatched block, to open it). Lines are imports between blocks; they rise to the lowest group
             containing both ends. Selecting highlights <span style={{ color: OUT_COLOR }}>what it imports</span> and{" "}
-            <span style={{ color: IN_COLOR }}>what imports it</span>. Colour = group, <span style={{ color: FILE_COLOR }}>grey = file</span>,
-            hatched = a group's own files or its groups too small to draw. Width = number of files. Drop a Graph File
-            anywhere to load it.
+            <span style={{ color: IN_COLOR }}>what imports it</span>. Colour = group, <span style={{ color: FILE_COLOR }}>grey = file</span>,{" "}
+            {mode === "1"
+              ? "hatched = a group's own files or its groups too small to draw."
+              : mode === "4"
+                ? "outlined = a folder of the group's own files (display only), or what's too small to draw."
+                : `outlined = a folder of the group's own files (display only), hatched = ${mode === "2" ? "groups" : "everything"} too small to draw.`}{" "}
+            Width = number of files. Drop a Graph File anywhere to load it.
           </Text>
         )}
       </ScrollArea>
@@ -474,9 +658,19 @@ function RestDetails({
           {stand.label}
         </Text>
         <Text size="xs" c="dimmed">
-          {rest.kind === "files"
-            ? `Files directly in ${rest.owner.label} that no subgroup contains.`
-            : `Groups in ${rest.owner.label} too narrow to draw (${stand.leaves.length} files).`}{" "}
+          {rest.kind === "files" && `Files directly in ${rest.owner.label} that no subgroup contains. `}
+          {rest.kind === "groups" && `Groups in ${rest.owner.label} too narrow to draw (${stand.leaves.length} files). `}
+          {rest.kind === "folder" && rest.folder && (
+            <>
+              {rest.folder.files.length === rest.folder.total
+                ? `Every file ${rest.folder.direct ? "directly in" : "under"} ${rest.folder.dir || "(repo root)"}/ sits directly in ${rest.owner.label}. `
+                : `${rest.folder.files.length} of the ${rest.folder.total} files ${rest.folder.direct ? "directly in" : "under"} ${rest.folder.dir || "(repo root)"}/ sit directly in ${rest.owner.label}; the other ${rest.folder.total - rest.folder.files.length} are elsewhere in the tree. `}
+              Folders are display only: they are not groups of the Optimal Tree. {""}
+            </>
+          )}
+          {rest.kind === "folders" && `Folders of ${rest.owner.label}'s direct files too narrow to draw. `}
+          {rest.kind === "more" &&
+            `Everything in ${rest.owner.label} too narrow to draw: ${rest.members.filter((m) => !isFile(m)).length} groups and ${rest.members.filter(isFile).length} files. `}
           Tap the block again to open it.
         </Text>
       </div>
