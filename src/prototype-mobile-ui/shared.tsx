@@ -288,7 +288,12 @@ export interface Flow {
  * Each foreign file is attributed to the deepest visible node containing it;
  * files inside the selection, or only reachable via its ancestors, are skipped.
  */
-export function edgeFlows(s: ProtoState, sel: OTNode | null, visible: Set<number>): Map<OTNode, Flow> {
+export function edgeFlows(
+  s: ProtoState,
+  sel: OTNode | null,
+  visible: Set<number>,
+  redirect?: Map<number, OTNode>, // node id → display-only block standing in for it
+): Map<OTNode, Flow> {
   const res = new Map<OTNode, Flow>();
   if (!sel || !s.prep || !s.tree) return res;
   const inSel = new Set(sel.leaves);
@@ -296,7 +301,11 @@ export function edgeFlows(s: ProtoState, sel: OTNode | null, visible: Set<number
   for (let a: OTNode | null = sel; a; a = a.parent) ancestors.add(a.id);
   const target = (leaf: number): OTNode | null => {
     let x: OTNode | null = s.tree!.byLeaf[leaf];
-    while (x && !visible.has(x.id)) x = x.parent;
+    while (x && !visible.has(x.id)) {
+      const r = redirect?.get(x.id);
+      if (r) return r;
+      x = x.parent;
+    }
     if (!x || ancestors.has(x.id)) return null;
     return x;
   };

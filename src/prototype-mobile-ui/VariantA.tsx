@@ -12,6 +12,17 @@ export const name = "Drill-down icicle";
 
 const ROW = 46;
 const LEVELS = 4;
+const FILE_MIN = 12; // px: below this, a group's direct files fold into one "N files" block
+const GROUP_MIN = 6; // px: below this, groups fold into one "+N small groups" block
+
+// Display-only blocks: a group's own (direct) files, or its groups too narrow to
+// draw. They are not Tree nodes: drawn as a hatched continuation of the parent,
+// and tapping one selects the parent.
+interface Rest {
+  kind: "files" | "groups";
+  owner: OTNode;
+  stand: OTNode; // pseudo node so edge lines can target the block
+}
 
 export function VariantA({ s }: { s: ProtoState }) {
   const [focusId, setFocusId] = useState<number | null>(null);
@@ -41,22 +52,52 @@ export function VariantA({ s }: { s: ProtoState }) {
     s.select(n);
   };
 
-  const rects: { n: OTNode; x: number; y: number; w: number }[] = [];
+  const rects: { n: OTNode; x: number; y: number; w: number; h: number; rest?: Rest }[] = [];
+  const redirect = new Map<number, OTNode>();
   if (focus) {
     const lay = (n: OTNode, x: number, width: number, level: number) => {
-      rects.push({ n, x, y: level * ROW, w: width });
+      rects.push({ n, x, y: level * ROW, w: width, h: ROW });
       if (level + 1 >= LEVELS) return;
+      const per = width / n.leaves.length; // px per file
+      const groups = n.children.filter((c) => !isFile(c));
+      const files = n.children.filter(isFile);
+      const big = groups.filter((g) => g.leaves.length * per >= GROUP_MIN);
+      const small = groups.filter((g) => g.leaves.length * per < GROUP_MIN);
+      const foldFiles = files.length > 0 && per < FILE_MIN;
       let cx = x;
-      for (const c of n.children) {
-        const cw = (width * c.leaves.length) / n.leaves.length;
-        lay(c, cx, cw, level + 1);
-        cx += cw;
+      for (const c of big) {
+        lay(c, cx, c.leaves.length * per, level + 1);
+        cx += c.leaves.length * per;
       }
+      const restBlock = (kind: Rest["kind"], members: OTNode[]) => {
+        const leaves = members.flatMap((m) => m.leaves);
+        const stand: OTNode = {
+          ...n,
+          id: -(n.id * 2 + (kind === "files" ? 1 : 2)),
+          parent: n,
+          depth: n.depth + 1,
+          children: [],
+          leaves,
+          leafIndex: -1,
+          label: kind === "files" ? `${members.length} files` : `+${members.length} small groups`,
+        };
+        for (const m of members) redirect.set(m.id, stand);
+        const bw = leaves.length * per;
+        rects.push({ n: stand, x: cx, y: (level + 1) * ROW, w: bw, h: (LEVELS - level - 1) * ROW, rest: { kind, owner: n, stand } });
+        cx += bw;
+      };
+      if (small.length) restBlock("groups", small);
+      if (foldFiles) restBlock("files", files);
+      else
+        for (const f of files) {
+          lay(f, cx, per, level + 1);
+          cx += per;
+        }
     };
     lay(focus, 0, w, 0);
   }
   const pos = new Map(rects.map((r) => [r.n.id, r]));
-  const flows = edgeFlows(s, s.selected, new Set(pos.keys()));
+  const flows = edgeFlows(s, s.selected, new Set(pos.keys()), redirect);
   const from = s.selected ? pos.get(s.selected.id) : undefined;
   const H = ROW * LEVELS;
   const arcs: React.ReactNode[] = [];
@@ -147,7 +188,37 @@ export function VariantA({ s }: { s: ProtoState }) {
 
       <div ref={ref} style={{ flex: "0 0 auto", height: ROW * LEVELS, position: "relative" }}>
         <svg width={w} height={ROW * LEVELS} style={{ display: "block" }}>
-          {rects.map(({ n, x, y, w: rw }) => {
+          <defs>
+            <pattern id="rest-hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+              <rect width="6" height="6" fill="transparent" />
+              <line x1="0" y1="0" x2="0" y2="6" stroke="#000" strokeOpacity="0.35" strokeWidth="2.5" />
+            </pattern>
+          </defs>
+          {rects.map(({ n, x, y, w: rw, h, rest }) => {
+            if (rest) {
+              const sel = s.selected?.id === rest.owner.id;
+              return (
+                <g key={n.id} onClick={() => s.select(rest.owner)} style={{ cursor: "pointer" }}>
+                  <rect x={x + 0.5} y={y + 0.5} width={Math.max(0, rw - 1)} height={h - 1} rx={3} fill={nodeColor(rest.owner, focus!)} fillOpacity={0.45} />
+                  <rect
+                    x={x + 0.5}
+                    y={y + 0.5}
+                    width={Math.max(0, rw - 1)}
+                    height={h - 1}
+                    rx={3}
+                    fill="url(#rest-hatch)"
+                    stroke={sel ? "#fff" : "none"}
+                    strokeDasharray="3 2"
+                    strokeWidth={1.5}
+                  />
+                  {rw > 30 && (
+                    <text x={x + 5} y={y + 17} fontSize={11} fill="#e8e8e8" fontWeight={600} style={{ pointerEvents: "none" }}>
+                      {clip(n.label, rw)}
+                    </text>
+                  )}
+                </g>
+              );
+            }
             const sel = s.selected?.id === n.id;
             return (
               <g key={n.id} onClick={() => tap(n)} style={{ cursor: "pointer" }}>
@@ -185,7 +256,7 @@ export function VariantA({ s }: { s: ProtoState }) {
           <NodeDetails s={s} node={s.selected} onPick={pick} />
         ) : (
           <Text size="sm" c="dimmed">
-            Tap a block to select it and see its imports (lime line = imports, orange = imported by); tap it again to zoom in. Colour = group (one colour per branch), <span style={{ color: FILE_COLOR }}>grey = file</span>. Block width = number of files.
+            Tap a block to select it and see its imports (lime line = imports, orange = imported by); tap it again to zoom in. Colour = group (one colour per branch), <span style={{ color: FILE_COLOR }}>grey = file</span>. Block width = number of files. Hatched = the group above it: its own files, or its groups too small to draw. Zoom in to see them one by one.
           </Text>
         )}
       </ScrollArea>
