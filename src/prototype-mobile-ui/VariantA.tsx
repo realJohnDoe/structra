@@ -34,10 +34,31 @@ interface Block {
 
 export function VariantA({ s }: { s: ProtoState }) {
   const [focusId, setFocusId] = useState<number | null>(null);
-  const [restSel, setRestSel] = useState<{ owner: number; kind: Rest["kind"] } | null>(null);
-  const focus = s.resolve(focusId) ?? s.tree?.root ?? null;
-  const ref = useRef<HTMLDivElement>(null);
   const [w, setW] = useState(360);
+  const [restSel, setRestSel] = useState<{ owner: number; kind: Rest["kind"] } | null>(null);
+  // An opened hatched block: it becomes the current view, with its members as children.
+  const [opened, setOpened] = useState<{ owner: number; kind: Rest["kind"]; members: number[] } | null>(null);
+  const zoomed = s.resolve(focusId) ?? s.tree?.root ?? null;
+  let focus: OTNode | null = zoomed;
+  let grid = false; // opened files too narrow for blocks: show them as a tile grid
+  if (opened && s.tree) {
+    const owner = s.byId.get(opened.owner);
+    const members = opened.members.map((id) => s.byId.get(id)).filter((m): m is OTNode => !!m && m.parent === owner);
+    if (owner && members.length) {
+      focus = {
+        ...owner,
+        id: -(owner.id * 2 + (opened.kind === "files" ? 1 : 2)),
+        parent: owner,
+        depth: owner.depth + 1,
+        children: members,
+        leaves: members.flatMap((m) => m.leaves),
+        leafIndex: -1,
+        label: opened.kind === "files" ? `${members.length} files` : `${members.length} small groups`,
+      };
+      grid = opened.kind === "files" && w / members.length < FILE_MIN;
+    }
+  }
+  const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -87,7 +108,7 @@ export function VariantA({ s }: { s: ProtoState }) {
           cx += per;
         }
     };
-    lay(focus, 0, w, 0);
+    if (!grid) lay(focus, 0, w, 0);
   }
   const pos = new Map(blocks.map((b) => [b.n.id, b]));
 
@@ -100,21 +121,32 @@ export function VariantA({ s }: { s: ProtoState }) {
 
   const tap = (n: OTNode) => {
     setRestSel(null);
-    if (s.selected?.id === n.id && !isFile(n) && n.id !== focus?.id) setFocusId(n.id);
-    else s.select(n);
+    if (s.selected?.id === n.id && !isFile(n) && n.id !== focus?.id) {
+      setOpened(null);
+      setFocusId(n.id);
+    } else s.select(n);
   };
+  // Tap a hatched block to select it (lists its contents); tap again to open it.
   const tapRest = (r: Rest) => {
     s.select(null);
-    setRestSel({ owner: r.owner.id, kind: r.kind });
+    if (restSel && restSel.owner === r.owner.id && restSel.kind === r.kind) {
+      setRestSel(null);
+      setFocusId(r.owner.id);
+      setOpened({ owner: r.owner.id, kind: r.kind, members: r.members.map((m) => m.id) });
+    } else setRestSel({ owner: r.owner.id, kind: r.kind });
   };
   // From a details list: select it and zoom so it sits one level below the focus.
   const pick = (n: OTNode) => {
     setRestSel(null);
     s.select(n);
+    if (opened && n.parent?.id === opened.owner && opened.members.includes(n.id)) return; // already in view
+    setOpened(null);
     if (n.parent) setFocusId(n.parent.id);
   };
   const crumb = (n: OTNode) => {
     setRestSel(null);
+    if (n.id === focus?.id && n.id < 0) return; // the opened block itself
+    setOpened(null);
     setFocusId(n.id);
     s.select(n);
   };
@@ -178,7 +210,7 @@ export function VariantA({ s }: { s: ProtoState }) {
           const B = pos.get(e.b)!;
           const bx = B.x + B.w / 2;
           const by = B.y + 2;
-          const apex = (lca(A.n, B.n).depth - focus.depth) * ROW + ROW / 2; // rise to the LCA's row
+          const apex = Math.max(0, lca(A.n, B.n).depth - focus.depth) * ROW + ROW / 2; // rise to the LCA's row
           d = `M${ax},${ay} Q${(ax + bx) / 2},${2 * apex - (ay + by) / 2} ${bx},${by}`;
         }
         lines.push(
@@ -231,6 +263,7 @@ export function VariantA({ s }: { s: ProtoState }) {
                 onClick={() => {
                   setFocusId(null);
                   setRestSel(null);
+                  setOpened(null);
                   s.setRepo(e.key);
                 }}
                 rightSection={
@@ -248,6 +281,7 @@ export function VariantA({ s }: { s: ProtoState }) {
               onChange={(f) => {
                 setFocusId(null);
                 setRestSel(null);
+                setOpened(null);
                 s.upload(f);
               }}
               accept=".json,application/json"
@@ -289,7 +323,38 @@ export function VariantA({ s }: { s: ProtoState }) {
       </ScrollArea>
 
       <div ref={ref} style={{ flex: "0 0 auto", height: ROW * LEVELS, position: "relative" }}>
-        <svg width={w} height={ROW * LEVELS} style={{ display: "block" }}>
+        {grid && focus && s.prep && (
+          // Opened files that don't fit as blocks: a scrollable grid of file tiles.
+          <div style={{ height: ROW * LEVELS, overflowY: "auto", display: "flex", flexWrap: "wrap", gap: 2, padding: 2, alignContent: "flex-start" }}>
+            {focus.children.map((f) => {
+              const sel = s.selected?.id === f.id;
+              const i = f.leafIndex;
+              return (
+                <UnstyledButton
+                  key={f.id}
+                  onClick={() => s.select(f)}
+                  style={{
+                    width: "calc(33.33% - 2px)",
+                    height: 40,
+                    background: FILE_COLOR,
+                    borderRadius: 3,
+                    padding: "3px 5px",
+                    outline: sel ? "2px solid #fff" : undefined,
+                    overflow: "hidden",
+                  }}
+                >
+                  <Text size="xs" c="#0b0b0b" fw={600} truncate>
+                    {f.label}
+                  </Text>
+                  <Text size="10px" c="#1b1b1b" truncate>
+                    {s.prep!.out[i].length || s.prep!.inn[i].length ? `→${s.prep!.out[i].length} ←${s.prep!.inn[i].length}` : "no imports"}
+                  </Text>
+                </UnstyledButton>
+              );
+            })}
+          </div>
+        )}
+        <svg width={w} height={ROW * LEVELS} style={{ display: grid ? "none" : "block" }}>
           <defs>
             <pattern id="rest-hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
               <line x1="0" y1="0" x2="0" y2="6" stroke="#000" strokeOpacity="0.35" strokeWidth="2.5" />
@@ -356,7 +421,7 @@ export function VariantA({ s }: { s: ProtoState }) {
           <NodeDetails s={s} node={s.selected} onPick={pick} />
         ) : (
           <Text size="sm" c="dimmed">
-            Tap a block to select it, tap again to zoom in. Lines are imports between blocks; they rise to the lowest group
+            Tap a block to select it, tap again to zoom in (or, for a hatched block, to open it). Lines are imports between blocks; they rise to the lowest group
             containing both ends. Selecting highlights <span style={{ color: OUT_COLOR }}>what it imports</span> and{" "}
             <span style={{ color: IN_COLOR }}>what imports it</span>. Colour = group, <span style={{ color: FILE_COLOR }}>grey = file</span>,
             hatched = a group's own files or its groups too small to draw. Width = number of files. Drop a Graph File
@@ -406,7 +471,8 @@ function RestDetails({
         <Text size="xs" c="dimmed">
           {rest.kind === "files"
             ? `Files directly in ${rest.owner.label} that no subgroup contains.`
-            : `Groups in ${rest.owner.label} too narrow to draw (${stand.leaves.length} files).`}
+            : `Groups in ${rest.owner.label} too narrow to draw (${stand.leaves.length} files).`}{" "}
+          Tap the block again to open it.
         </Text>
       </div>
       <Group gap={6}>
