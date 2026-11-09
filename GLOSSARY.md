@@ -29,3 +29,5 @@
 **Graph File**: The serialized Dependency Graph of one repository at one commit, as emitted by a Parser and read by the app. Lists every In-scope File, including files with no dependencies, and each directed import from importer to imported file at most once. Records which repository, commit, language and Parser it came from, and nothing that varies between runs. Valid only together with the app and Parsers of the same structra commit.
 
 **Example Repo**: A well-known repository pinned at a specific commit, shipped with a precomputed Graph File. It doubles as an end-to-end test for its Parser.
+
+**Example Repo List**: The committed list of all Example Repos. For each one it names the repository, its language, the release and full commit it is pinned at, and the excludes its Parser run needs, so its Graph File can be regenerated from the list alone.

@@ -1,0 +1,113 @@
+# Example Repos: well-known repositories pinned at a release commit, each
+# shipped with a precomputed Graph File (examples/<name>.graph.json) and
+# dendrogram. See GLOSSARY.md ("Example Repo", "Example Repo List") and
+# "Example repo list, pinned commits, C/Linux feasibility" (#12).
+#
+# - `commit` (full SHA) is the pin. `release` is only a readable label, since
+#   tags can move.
+# - A pin changes only on purpose, in its own PR that also regenerates that
+#   repo's Graph File and dendrogram.
+# - `exclude` (git pathspec-style globs, passed as --exclude) is only for
+#   vendored code the Parser's default rule misses. Tests and fixtures stay in.
+# - One Graph File per repo, in its headline language.
+# - The first entry is the one the app shows on first load.
+
+# --- Python ---
+
+[[repo]]
+name = "flask"
+url = "https://github.com/pallets/flask"
+language = "python"
+release = "3.1.3"
+commit = "22d924701a6ae2e4cd01e9a15bbaf3946094af65"
+exclude = []
+
+[[repo]]
+name = "requests"
+url = "https://github.com/psf/requests"
+language = "python"
+release = "v2.34.2"
+commit = "6e83187b8feb273ed4c6cdab5efd8d54901dfab3"
+exclude = []
+
+# Python files only: numpy's C sources are not part of this Graph File.
+[[repo]]
+name = "numpy"
+url = "https://github.com/numpy/numpy"
+language = "python"
+release = "v2.5.4"
+commit = "a3d0ef1df045b858e68115001fdabc930bb3b68c"
+exclude = []
+
+[[repo]]
+name = "django"
+url = "https://github.com/django/django"
+language = "python"
+release = "6.1.3"
+commit = "f16e25dcb9fe55734ba4ea2b00ac34405b7df74a"
+exclude = []
+
+# --- TypeScript / JavaScript ---
+
+[[repo]]
+name = "express"
+url = "https://github.com/expressjs/express"
+language = "typescript"
+release = "v5.3.0"
+commit = "cf6722bf89a86905281d9160b6482e08166b5ef0"
+exclude = []
+
+[[repo]]
+name = "vite"
+url = "https://github.com/vitejs/vite"
+language = "typescript"
+release = "v8.3.7"
+commit = "5def936009d2637a48d056e197aebc6242ac27c6"
+exclude = []
+
+[[repo]]
+name = "react"
+url = "https://github.com/facebook/react"
+language = "typescript"
+release = "v19.3.1"
+commit = "61aa00df822d0eb76d0362eb8b6fdd3527693efe"
+exclude = []
+
+# --- Rust ---
+
+[[repo]]
+name = "ripgrep"
+url = "https://github.com/BurntSushi/ripgrep"
+language = "rust"
+release = "15.2.0"
+commit = "e89fff89ac9af12e8d4ce9d5fd07beb408ca730f"
+exclude = []
+
+[[repo]]
+name = "tokio"
+url = "https://github.com/tokio-rs/tokio"
+language = "rust"
+release = "tokio-1.54.1"
+commit = "b53b2001ed2ccfd9b87e32a0c6da1a1eebdc80b8"
+exclude = []
+
+# --- C ---
+# Linux is out of scope for v1 (see #12).
+
+# deps/ holds vendored hiredis, jemalloc, lua, etc., which the default
+# vendored-directory rule does not detect.
+[[repo]]
+name = "redis"
+url = "https://github.com/redis/redis"
+language = "c"
+release = "8.10.3"
+commit = "1a2574ce1551d3de6e0b4a56756c0fdbc6659e4f"
+exclude = ["deps/**"]
+
+[[repo]]
+name = "git"
+url = "https://github.com/git/git"
+language = "c"
+release = "v2.56.0"
+commit = "a018953688f1b10bddf91bff8747068f5f4746a4"
+exclude = []
