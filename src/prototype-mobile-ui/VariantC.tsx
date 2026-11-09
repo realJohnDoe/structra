@@ -155,7 +155,7 @@ export function VariantC({ s }: { s: ProtoState }) {
             {arcs}
             <circle r={r0 - 2} fill={BG1} stroke={BORDER} onClick={() => (focus.parent ? pick(focus.parent) : s.select(focus))} style={{ cursor: "pointer" }} />
             <text y={-8} textAnchor="middle" fontSize={12} fill={ACCENT} fontWeight={600} style={{ pointerEvents: "none" }}>
-              {focus.parent ? (focus.label.length > 14 ? focus.label.slice(0, 13) + "…" : focus.label) : "root"}
+              {focus.label.length > 14 ? focus.label.slice(0, 13) + "…" : focus.label}
             </text>
             <text y={8} textAnchor="middle" fontSize={10} fill="#888" style={{ pointerEvents: "none" }}>
               {focus.leaves.length} files

@@ -394,7 +394,11 @@ function labelNode(node: OTNode, paths: string[], prep: Prepared) {
 }
 
 function finishLabels(node: OTNode, paths: string[]) {
-  if (node.leafIndex < 0) {
+  if (node.leafIndex < 0 && !node.parent) {
+    // The root is the group of every file, not the repository's root directory.
+    node.label = `All ${node.leaves.length} files`;
+    node.sublabel = "The root of the Optimal Tree: the group of every file. Its children are the top-level split.";
+  } else if (node.leafIndex < 0) {
     const parentPrefix = node.parent ? node.parent.prefix : null;
     const ownFolder = node.prefix && node.prefix !== parentPrefix;
     const set = `{${node.hubs.join(", ")}${node.leaves.length > node.hubs.length ? ", …" : ""}}`;

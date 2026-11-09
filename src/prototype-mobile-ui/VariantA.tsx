@@ -132,7 +132,7 @@ export function VariantA({ s }: { s: ProtoState }) {
               <Group key={n.id} gap={4} wrap="nowrap">
                 <UnstyledButton onClick={() => crumb(n)}>
                   <Text size="xs" c={i === arr.length - 1 ? ACCENT : "dimmed"} style={{ whiteSpace: "nowrap" }}>
-                    {i === 0 ? "root" : n.label}
+                    {n.label}
                   </Text>
                 </UnstyledButton>
                 {i < arr.length - 1 && (

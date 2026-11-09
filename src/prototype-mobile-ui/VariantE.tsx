@@ -338,7 +338,7 @@ export function VariantE({ s }: { s: ProtoState }) {
               style={{ whiteSpace: "nowrap", cursor: "pointer" }}
               onClick={() => setFocusId(n.id)}
             >
-              {i === 0 ? "root" : n.label}
+              {n.label}
               {i < arr.length - 1 ? " ›" : ""}
             </Text>
           ))}
