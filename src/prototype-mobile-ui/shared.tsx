@@ -50,7 +50,7 @@ export function useProtoState(): ProtoState {
   const [graph, setGraph] = useState<GraphFile | null>(null);
   const [loading, setLoading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const [lambda, setLambdaRaw] = useState(() => Number(readParam("lambda") ?? 0.5));
+  const [lambda, setLambdaRaw] = useState(() => Number(readParam("lambda") ?? 0.45));
   const [committed, setCommitted] = useState(lambda);
   const [selectedId, setSelectedId] = useState<number | null>(null);
 
@@ -145,7 +145,7 @@ export function useProtoState(): ProtoState {
 export function lambdaSummary(s: ProtoState) {
   const t = s.tree;
   if (!t) return "";
-  return `${t.groups} groups · depth ${t.maxDepth} · ${t.total.toFixed(2)} nats`;
+  return `${t.groups} groups · depth ${t.maxDepth}`;
 }
 
 export function pathTo(n: OTNode): OTNode[] {
@@ -214,10 +214,8 @@ export function NodeDetails({
       </Stack>
     );
   }
-  const k = node.children.length;
   const sub = node.children.filter((c) => !isFile(c));
   const files = node.children.filter(isFile);
-  const share = tree.total > 0 ? (100 * node.costShare) / tree.total : 0;
   return (
     <Stack gap="xs">
       <div>
@@ -235,16 +233,16 @@ export function NodeDetails({
         <Badge variant="light" color="gray">
           {sub.length} subgroups · {files.length} files direct
         </Badge>
-        <Badge variant="light" color="lime">
-          {node.internalEdges} deps inside
+        <Badge variant="light" color="gray">
+          {node.internalEdges} imports within
         </Badge>
-        <Badge variant="light" color="orange">
-          {node.edgesIn} in · {node.edgesOut} out
+        <Badge variant="outline" style={{ color: OUT_COLOR, borderColor: OUT_COLOR }}>
+          → {node.edgesOut} to outside
+        </Badge>
+        <Badge variant="outline" style={{ color: IN_COLOR, borderColor: IN_COLOR }}>
+          ← {node.edgesIn} from outside
         </Badge>
       </Group>
-      <Text size="xs" c="dimmed">
-        k = {k}, crossed by {node.crossings} deps · pays {share.toFixed(1)}% of Total Cost
-      </Text>
       {!compact && (
         <Stack gap={2}>
           <Text size="xs" c="dimmed" tt="uppercase">
