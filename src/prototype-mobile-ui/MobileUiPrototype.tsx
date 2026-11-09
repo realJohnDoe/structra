@@ -11,6 +11,7 @@ import { VariantC } from "./VariantC";
 import { VariantE } from "./VariantE";
 import LegacyApp from "../App";
 import type { OptimizerOptions } from "./optimizer";
+import { PerfOverlay } from "./perf/PerfOverlay";
 
 const OPTS: { key: string; name: string; opts: OptimizerOptions }[] = [
   { key: "1", name: "Current: greedy per λ", opts: { linkage: "parisSize", contraction: "greedy", looseByFolder: false } },
@@ -27,6 +28,7 @@ export function MobileUiPrototype() {
   return (
     <>
       {variant === "A" && <VariantA key={opt} s={s} />}
+      <PerfOverlay s={s} />
       {variant === "B" && <VariantB s={s} />}
       {variant === "C" && <VariantC s={s} />}
       {variant === "D" && <LegacyApp />}

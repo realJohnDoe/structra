@@ -20,9 +20,10 @@ html = html.replace(/<script type="module"[^>]*src="([^"]+)"[^>]*><\/script>/g, 
 });
 html = html.replace(/<link rel="icon"[^>]*>/, "");
 
+// Raw JSON text keyed by file name, so the page times JSON.parse like after a fetch.
 const examples = {};
 for (const f of fs.readdirSync("public/prototype-examples")) {
-  examples[f.replace(".graph.json", "")] = JSON.parse(fs.readFileSync(path.join("public/prototype-examples", f), "utf8"));
+  examples[f] = fs.readFileSync(path.join("public/prototype-examples", f), "utf8");
 }
 const data = `<script>window.__STRUCTRA_EXAMPLES__=${safe(JSON.stringify(examples))};</script>`;
 html = html.replace("</body>", () => `${data}\n<script type="module">${safe(js)}</script>\n</body>`);

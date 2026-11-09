@@ -1,13 +1,15 @@
 // PROTOTYPE (throwaway): state and pieces shared by the mobile UI variants.
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Badge, Group, Stack, Text, UnstyledButton } from "@mantine/core";
-import { optimalTree, prepare } from "./optimizer";
+import { optimalTree, perfHook } from "./optimizer";
+import { perf, preparePipe, type PerfArtifacts, type Pipe } from "./perf/pipeline";
 import type { GraphFile, OTNode, OptimalTree, OptimizerOptions, Prepared } from "./optimizer";
 
 export const EXAMPLES = [
   { key: "requests", name: "requests", hint: "37 files" },
   { key: "flask", name: "flask", hint: "83 files" },
   { key: "django", name: "django", hint: "2,943 files" },
+  { key: "react", name: "react", hint: "4,445 files (prototype scan)" },
 ] as const;
 
 export const ACCENT = "#c8f060";
@@ -53,17 +55,28 @@ export function useProtoState(opts?: OptimizerOptions): ProtoState {
   const [lambda, setLambdaRaw] = useState(() => Number(readParam("lambda") ?? 0.45));
   const [committed, setCommitted] = useState(lambda);
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const artRef = useRef<PerfArtifacts | null>(null);
 
   useEffect(() => {
     if (repoKey === "upload") return;
     let cancelled = false;
     setLoading(true);
     // The single-file HTML build embeds the examples in window.__STRUCTRA_EXAMPLES__.
-    const embedded = (window as unknown as { __STRUCTRA_EXAMPLES__?: Record<string, GraphFile> }).__STRUCTRA_EXAMPLES__?.[repoKey];
-    (embedded
-      ? Promise.resolve(embedded)
-      : fetch(`${import.meta.env.BASE_URL}prototype-examples/${repoKey}.graph.json`).then((r) => r.json())
-    )
+    // PROTOTYPE (perf ticket): the embedded single-file build stores raw JSON text, so parsing is timed like a fetch.
+    const embedded = (window as unknown as { __STRUCTRA_EXAMPLES__?: Record<string, string> }).__STRUCTRA_EXAMPLES__;
+    const get = (f: string): Promise<string | null> =>
+      embedded ? Promise.resolve(embedded[f] ?? null) : fetch(`${import.meta.env.BASE_URL}prototype-examples/${f}`).then((r) => (r.ok ? r.text() : null));
+    perf.marks = {};
+    perf.loadStart = performance.now();
+    Promise.all([get(`${repoKey}.graph.json`), get(`${repoKey}.perf.json`)])
+      .then(([gt, at]) => {
+        const t0 = performance.now();
+        const g = JSON.parse(gt!) as GraphFile;
+        artRef.current = at ? (JSON.parse(at) as PerfArtifacts) : null;
+        perf.marks.fetchJson = t0 - perf.loadStart;
+        perf.marks.parseJson = performance.now() - t0;
+        return g;
+      })
       .then((g: GraphFile) => {
         if (!cancelled) {
           setGraph(g);
@@ -76,8 +89,22 @@ export function useProtoState(opts?: OptimizerOptions): ProtoState {
     };
   }, [repoKey]);
 
-  const prep = useMemo(() => (graph ? prepare(graph, opts) : null), [graph, opts]);
-  const large = (graph?.nodes.length ?? 0) > 1000;
+  // PROTOTYPE (perf ticket): ?pipe=main|worker|shipped, ?live=1 (update while dragging on big repos), ?cache=0 (no per-λ tree cache), ?nodecache=0 (no per-group stats/labels cache).
+  const [prep, setPrep] = useState<Prepared | null>(null);
+  useEffect(() => {
+    setPrep(null);
+    if (!graph) return;
+    let cancelled = false;
+    const pipe = (readParam("pipe") ?? "shipped") as Pipe;
+    perfHook.noCache = readParam("cache") === "0";
+    perfHook.noNodeCache = readParam("nodecache") === "0";
+    void opts;
+    preparePipe(graph, pipe, artRef.current).then((p) => !cancelled && setPrep(p));
+    return () => {
+      cancelled = true;
+    };
+  }, [graph, opts]);
+  const large = (graph?.nodes.length ?? 0) > 1000 && readParam("live") !== "1";
   const tree = useMemo(() => (prep ? optimalTree(prep, large ? committed : lambda) : null), [prep, lambda, committed, large]);
   const byId = useMemo(() => {
     const m = new Map<number, OTNode>();
@@ -112,6 +139,7 @@ export function useProtoState(opts?: OptimizerOptions): ProtoState {
           const g = JSON.parse(txt) as GraphFile;
           if (!Array.isArray(g.nodes) || !Array.isArray(g.edges) || !g.meta) throw new Error("not a Graph File");
           setUploadError(null);
+          artRef.current = null;
           setRepoKey("upload");
           setGraph(g);
           setSelectedId(null);
@@ -121,16 +149,18 @@ export function useProtoState(opts?: OptimizerOptions): ProtoState {
       });
     },
     uploadError,
-    loading,
+    loading: loading || (!!graph && !prep),
     prep,
     tree,
     byId,
     lambda,
     setLambda: (l) => {
+      perf.inputAt = performance.now();
       setLambdaRaw(l);
       if (!large) writeParam("lambda", l.toFixed(2));
     },
     commitLambda: (l) => {
+      perf.inputAt = performance.now();
       setCommitted(l);
       setLambdaRaw(l);
       writeParam("lambda", l.toFixed(2));

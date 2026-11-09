@@ -87,9 +87,11 @@ export interface Prepared {
   inn: number[][];
   dendro: Dendrogram;
   cache: Map<number, OptimalTree>;
+  contraction?: Contraction; // PROTOTYPE (perf ticket)
+  nodeInfo?: Map<number, Pick<OTNode, "internalEdges" | "edgesIn" | "edgesOut" | "prefix" | "hubs" | "label" | "sublabel">>; // PROTOTYPE (perf ticket)
 }
 
-export function prepare(graph: GraphFile, opts: OptimizerOptions = DEFAULT_OPTIONS): Prepared {
+export function prepare(graph: GraphFile, opts: OptimizerOptions = DEFAULT_OPTIONS, shipped?: Dendrogram): Prepared {
   const index = new Map<string, number>();
   graph.nodes.forEach((p, i) => index.set(p, i));
   const edges: [number, number][] = [];
@@ -105,7 +107,7 @@ export function prepare(graph: GraphFile, opts: OptimizerOptions = DEFAULT_OPTIO
     out[a].push(b);
     inn[b].push(a);
   }
-  const dendro = opts.linkage === "parisSize" ? buildDendrogram(n, edges, graph.nodes) : buildLinkage(n, edges, graph.nodes, opts.linkage);
+  const dendro = shipped ?? (opts.linkage === "parisSize" ? buildDendrogram(n, edges, graph.nodes) : buildLinkage(n, edges, graph.nodes, opts.linkage));
   return { opts, sweep: null, synthParent: new Map(), graph, index, edges, out, inn, dendro, cache: new Map() };
 }
 
@@ -189,13 +191,16 @@ function buildDendrogram(n: number, edges: [number, number][], paths: string[]):
 }
 
 const EPS = 1e-9;
+export const perfHook = { lastMaterialize: 0, noCache: false, noNodeCache: false };
 
 export function optimalTree(prep: Prepared, lambdaRaw: number): OptimalTree {
   const lambda = Math.round(lambdaRaw * 100) / 100;
   const hit = prep.cache.get(lambda);
   if (hit) return hit;
+  const t0 = performance.now();
   const t = contract(prep, lambda);
-  prep.cache.set(lambda, t);
+  perfHook.lastMaterialize = performance.now() - t0; // PROTOTYPE (perf ticket)
+  if (!perfHook.noCache) prep.cache.set(lambda, t);
   return t;
 }
 
@@ -221,7 +226,8 @@ function contract(prep: Prepared, lambda: number): OptimalTree {
   const wN = (1 - lambda) / N;
   if (prep.opts.contraction === "sweep" && n > 1) {
     if (!prep.sweep) prep.sweep = sweepSets(prep);
-    const c = new Contraction(dendro, edges).setSurvivors(prep.sweep[Math.round(lambda * 100)]);
+    // PROTOTYPE (perf ticket): the Contraction's static per-node data is λ-independent, so build it once.
+    const c = (prep.contraction ??= new Contraction(dendro, edges)).setSurvivors(prep.sweep[Math.round(lambda * 100)]);
     const { kids } = c.tree();
     const X = new Float64Array(total);
     for (let x = n; x < total; x++) if (c.surv[x]) X[x] = c.X(x);
@@ -358,8 +364,17 @@ function materialize(prep: Prepared, lambda: number, kids: number[][], X: Float6
 
   // Stats + labels, bottom-up.
   const inGroup = new Int32Array(n);
+  // PROTOTYPE (perf ticket): a surviving group is a dendrogram node, and its file set is the
+  // same at every λ, so stats, prefix and hubs are cached per dendrogram node across steps.
+  const nodeInfo = (prep.nodeInfo ??= new Map());
+  const useInfo = !perfHook.noNodeCache;
   const stats = (node: OTNode) => {
     node.children.forEach(stats);
+    const hit = useInfo && !node.synthetic ? nodeInfo.get(node.id) : undefined;
+    if (hit) {
+      Object.assign(node, hit);
+      return;
+    }
     let stamp = node.id + 1;
     for (const l of node.leaves) inGroup[l] = stamp;
     let internalEdges = 0;
@@ -376,6 +391,7 @@ function materialize(prep: Prepared, lambda: number, kids: number[][], X: Float6
     node.edgesIn = edgesIn;
     node.edgesOut = edgesOut;
     labelNode(node, paths, prep);
+    if (useInfo && !node.synthetic) nodeInfo.set(node.id, { internalEdges, edgesIn, edgesOut, prefix: node.prefix, hubs: node.hubs, label: node.label, sublabel: node.sublabel });
     stamp = 0;
   };
   stats(root);
