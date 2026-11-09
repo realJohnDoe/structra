@@ -4,7 +4,7 @@
 
 **Leaf**: A file. The smallest unit placed in a tree.
 
-**Tree**: A rooted hierarchy whose leaves are the files of a Dependency Graph. Its internal nodes group files.
+**Tree**: A rooted hierarchy whose leaves are the files of a Dependency Graph. Its internal nodes group files. Its root is the group of all files; it is not the repository's root directory.
 
 **Directory Tree**: The Tree given by the repository's actual folder structure.
 
