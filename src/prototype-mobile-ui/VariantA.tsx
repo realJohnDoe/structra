@@ -517,7 +517,34 @@ export function VariantA({ s, mode = "1" }: { s: ProtoState; mode?: FilesMode })
         {grid && focus && s.prep && (
           // Opened block whose members don't fit: a scrollable grid of tiles. Tap a group
           // tile to select it, again to zoom in; tap a folder tile to select it, again to open it.
-          <div style={{ height: ROW * LEVELS, overflowY: "auto", display: "flex", flexWrap: "wrap", gap: 2, padding: 2, alignContent: "flex-start" }}>
+          <>
+          {/* The opened block stays on top in its owner's colour, as in block view. */}
+          {(() => {
+            const c = colorOf(focus);
+            const outlined = focusAsFolder;
+            return (
+              <div
+                style={{
+                  height: ROW - 1,
+                  margin: "0.5px 0.5px 0",
+                  borderRadius: 3,
+                  padding: "3px 6px",
+                  background: outlined ? `color-mix(in srgb, ${c} 16%, transparent)` : c,
+                  outline: outlined ? `1.5px solid ${c}` : undefined,
+                  outlineOffset: -1.5,
+                  overflow: "hidden",
+                }}
+              >
+                <Text size="xs" c={outlined ? "#e8e8e8" : "#0b0b0b"} fw={600} truncate>
+                  {focus.label}
+                </Text>
+                <Text size="10px" c={outlined ? "#bbb" : "#0b0b0b"} truncate>
+                  {focus.leaves.length} files · {tiles.length} {focusAsFolder || tiles.every((t) => t.kind === "file") ? "files" : "items"}
+                </Text>
+              </div>
+            );
+          })()}
+          <div style={{ height: ROW * (LEVELS - 1), overflowY: "auto", display: "flex", flexWrap: "wrap", gap: 2, padding: 2, alignContent: "flex-start" }}>
             {tiles.map((t) => {
               const tileStyle = (bg: string, sel: boolean, outlined?: string): React.CSSProperties => ({
                 width: "calc(33.33% - 2px)",
@@ -531,7 +558,7 @@ export function VariantA({ s, mode = "1" }: { s: ProtoState; mode?: FilesMode })
               });
               if (t.kind === "folder") {
                 const r = t.block.rest!;
-                const c = colorOf(focus);
+                const c = colorOf(focus!);
                 return (
                   <UnstyledButton key={r.key} onClick={() => tapRest(r, t.block.n)} style={tileStyle(`color-mix(in srgb, ${c} 16%, transparent)`, restSel === r.key, c)}>
                     <Text size="xs" c="#e8e8e8" fw={600} truncate>
@@ -570,6 +597,7 @@ export function VariantA({ s, mode = "1" }: { s: ProtoState; mode?: FilesMode })
               );
             })}
           </div>
+          </>
         )}
         <svg width={w} height={ROW * LEVELS} style={{ display: grid ? "none" : "block" }}>
           <defs>
