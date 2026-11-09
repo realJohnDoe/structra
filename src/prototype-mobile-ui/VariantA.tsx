@@ -161,7 +161,12 @@ export function VariantA({ s, mode = "1" }: { s: ProtoState; mode?: FilesMode })
         label: opened.label,
       };
       focusAsFolder = opened.asFolder;
-      grid = members.every(isFile) && (mode === "1" || focusAsFolder) && w / members.length < FILE_MIN;
+      // An opened block whose members don't all fit as blocks becomes a scrollable
+      // tile grid, one tile per member. Re-laying them across the same width would
+      // just fold them into the same "+N more" again.
+      const per = w / members.reduce((a, m) => a + m.leaves.length, 0);
+      grid = members.some((m) => (isFile(m) ? per < FILE_MIN : m.leaves.length * per < GROUP_MIN));
+
     }
   }
   const ref = useRef<HTMLDivElement>(null);
@@ -259,13 +264,31 @@ export function VariantA({ s, mode = "1" }: { s: ProtoState; mode?: FilesMode })
     };
     if (!grid) lay(focus, 0, w, 0, focusAsFolder);
   }
+  // Tiles of an opened block (see `grid`): groups, then folders (modes 2–4), then files.
+  type Tile = { kind: "group" | "file"; n: OTNode } | { kind: "folder"; block: Block };
+  const tiles: Tile[] = [];
+  if (grid && focus && s.prep) {
+    const groups = focus.children.filter((c) => !isFile(c));
+    const files = focus.children.filter(isFile);
+    for (const g of groups) tiles.push({ kind: "group", n: g });
+    if (mode === "1" || focusAsFolder) for (const f of files) tiles.push({ kind: "file", n: f });
+    else {
+      const buckets = bucketFiles(files, focus.prefix, s.prep.graph.nodes, counts!, how);
+      for (const b of buckets.filter((b) => b.files.length > 1)) {
+        const stand: OTNode = { ...focus, id: standId--, parent: focus, depth: focus.depth + 1, children: [], leaves: b.files.flatMap((f) => f.leaves), leafIndex: -1, label: b.name };
+        tiles.push({ kind: "folder", block: { n: stand, x: 0, y: 0, w: 0, rest: { kind: "folder", owner: focus, members: b.files, folder: b, key: `${focus.id}|folder|${b.dir}` } } });
+      }
+      for (const b of buckets.filter((b) => b.files.length === 1)) tiles.push({ kind: "file", n: b.files[0] });
+    }
+  }
+  const tileBlocks = tiles.flatMap((t) => (t.kind === "folder" ? [t.block] : []));
   const pos = new Map(blocks.map((b) => [b.n.id, b]));
   // Colours come from the whole tree, not the current zoom, so a group keeps its
   // colour when zooming in or out. An opened hatched block takes its owner's colour.
   const colorOf = (n: OTNode) => nodeColor(n.id < 0 && n.parent ? n.parent : n, s.tree!.root);
 
   // ---- selection ----
-  const selRest = restSel ? blocks.find((b) => b.rest && b.rest.key === restSel) : undefined;
+  const selRest = restSel ? [...blocks, ...tileBlocks].find((b) => b.rest && b.rest.key === restSel) : undefined;
   const active: OTNode | null = selRest ? selRest.n : s.selected;
   const activeLeaves = new Set(active ? active.leaves : []);
   // The block that stands for the selection (itself, or the Rest block it is folded into).
@@ -478,27 +501,53 @@ export function VariantA({ s, mode = "1" }: { s: ProtoState; mode?: FilesMode })
 
       <div ref={ref} style={{ flex: "0 0 auto", height: ROW * LEVELS, position: "relative" }}>
         {grid && focus && s.prep && (
-          // Opened files that don't fit as blocks: a scrollable grid of file tiles.
+          // Opened block whose members don't fit: a scrollable grid of tiles. Tap a group
+          // tile to select it, again to zoom in; tap a folder tile to select it, again to open it.
           <div style={{ height: ROW * LEVELS, overflowY: "auto", display: "flex", flexWrap: "wrap", gap: 2, padding: 2, alignContent: "flex-start" }}>
-            {focus.children.map((f) => {
-              const sel = s.selected?.id === f.id;
-              const i = f.leafIndex;
+            {tiles.map((t) => {
+              const tileStyle = (bg: string, sel: boolean, outlined?: string): React.CSSProperties => ({
+                width: "calc(33.33% - 2px)",
+                height: 40,
+                background: bg,
+                borderRadius: 3,
+                padding: "3px 5px",
+                outline: sel ? "2px solid #fff" : outlined ? `1.5px solid ${outlined}` : undefined,
+                outlineOffset: outlined && !sel ? -1.5 : undefined,
+                overflow: "hidden",
+              });
+              if (t.kind === "folder") {
+                const r = t.block.rest!;
+                const c = colorOf(focus);
+                return (
+                  <UnstyledButton key={r.key} onClick={() => tapRest(r, t.block.n)} style={tileStyle(`color-mix(in srgb, ${c} 16%, transparent)`, restSel === r.key, c)}>
+                    <Text size="xs" c="#e8e8e8" fw={600} truncate>
+                      {r.folder!.name}
+                    </Text>
+                    <Text size="10px" c="#bbb" truncate>
+                      {hereText(r.folder!)}
+                    </Text>
+                  </UnstyledButton>
+                );
+              }
+              const n = t.n;
+              const sel = s.selected?.id === n.id && !restSel;
+              if (t.kind === "group") {
+                return (
+                  <UnstyledButton key={n.id} onClick={() => tap(n)} style={tileStyle(colorOf(n), sel)}>
+                    <Text size="xs" c="#0b0b0b" fw={600} truncate>
+                      {n.label}
+                    </Text>
+                    <Text size="10px" c="#1b1b1b" truncate>
+                      {n.leaves.length} files
+                    </Text>
+                  </UnstyledButton>
+                );
+              }
+              const i = n.leafIndex;
               return (
-                <UnstyledButton
-                  key={f.id}
-                  onClick={() => s.select(f)}
-                  style={{
-                    width: "calc(33.33% - 2px)",
-                    height: 40,
-                    background: FILE_COLOR,
-                    borderRadius: 3,
-                    padding: "3px 5px",
-                    outline: sel ? "2px solid #fff" : undefined,
-                    overflow: "hidden",
-                  }}
-                >
+                <UnstyledButton key={n.id} onClick={() => tap(n)} style={tileStyle(FILE_COLOR, sel)}>
                   <Text size="xs" c="#0b0b0b" fw={600} truncate>
-                    {f.label}
+                    {n.label}
                   </Text>
                   <Text size="10px" c="#1b1b1b" truncate>
                     {s.prep!.out[i].length || s.prep!.inn[i].length ? `→${s.prep!.out[i].length} ←${s.prep!.inn[i].length}` : "no imports"}
