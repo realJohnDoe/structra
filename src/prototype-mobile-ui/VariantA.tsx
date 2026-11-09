@@ -150,9 +150,14 @@ export function VariantA({ s }: { s: ProtoState }) {
       const inU = activeLeaves.has(u);
       const inV = activeLeaves.has(v);
       const cat: Cat = active && inU !== inV ? (inU ? "out" : "in") : "other";
-      if (bu === null) add(bv!, null, cat);
-      else if (bv === null) add(bu, null, cat);
-      else add(bu, bv, cat);
+      // Highlighted lines start at the selected block itself, not at the blocks
+      // below it, so they never run up through the selection.
+      const au = cat !== "other" && inU && activeBlockId !== undefined ? activeBlockId : bu;
+      const av = cat !== "other" && inV && activeBlockId !== undefined ? activeBlockId : bv;
+      if (au === av) continue;
+      if (au === null) add(av!, null, cat);
+      else if (av === null) add(au, null, cat);
+      else add(au, av, cat);
     }
     const many = agg.size > 250;
     const order: Cat[] = ["other", "in", "out"];
@@ -161,7 +166,7 @@ export function VariantA({ s }: { s: ProtoState }) {
         if (e.cat !== cat) continue;
         const A = pos.get(e.a)!;
         const ax = A.x + A.w / 2;
-        const ay = A.y + ROW / 2;
+        const ay = A.y + 2; // anchor at the top edge, so lines arc above blocks, not across them
         const color = cat === "out" ? OUT_COLOR : cat === "in" ? IN_COLOR : "#d8dde4";
         const opacity = cat === "other" ? (active ? 0.1 : many ? 0.22 : 0.4) : 0.85;
         const width = Math.min(5, 0.6 + Math.log2(e.count) * 0.6) * (cat === "other" ? 1 : 1.4);
@@ -172,7 +177,7 @@ export function VariantA({ s }: { s: ProtoState }) {
         } else {
           const B = pos.get(e.b)!;
           const bx = B.x + B.w / 2;
-          const by = B.y + ROW / 2;
+          const by = B.y + 2;
           const apex = (lca(A.n, B.n).depth - focus.depth) * ROW + ROW / 2; // rise to the LCA's row
           d = `M${ax},${ay} Q${(ax + bx) / 2},${2 * apex - (ay + by) / 2} ${bx},${by}`;
         }
