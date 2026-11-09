@@ -201,7 +201,7 @@ export function VariantA({ s }: { s: ProtoState }) {
         const ay = A.y + 2; // anchor at the top edge, so lines arc above blocks, not across them
         const color = cat === "out" ? OUT_COLOR : cat === "in" ? IN_COLOR : "#d8dde4";
         const opacity = cat === "other" ? (active ? 0.1 : many ? 0.22 : 0.4) : 0.85;
-        const width = Math.min(5, 0.6 + Math.log2(e.count) * 0.6) * (cat === "other" ? 1 : 1.4);
+        const width = 1; // one thin stroke for every line, whatever its import count
         let d: string;
         if (e.b === null) {
           // leaves the current zoom: a stub up to the top edge
