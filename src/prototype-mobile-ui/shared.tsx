@@ -344,7 +344,7 @@ function buildColors(top: OTNode): Map<number, string> {
       const w = ((h1 - h0) * c.leaves.length) / total;
       const mid = h + w / 2;
       // Alternate lightness a little so neighbours stay distinct when hue ranges get narrow.
-      const light = Math.max(34, 64 - below * 7 - (i % 2) * 6);
+      const light = Math.max(40, 64 - below * 4 - (i % 2) * 7);
       m.set(c.id, `hsl(${(mid + 200) % 360} 62% ${light}%)`);
       walk(c, h, h + w, below + 1);
       h += w;

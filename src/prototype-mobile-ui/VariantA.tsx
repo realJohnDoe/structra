@@ -111,6 +111,9 @@ export function VariantA({ s }: { s: ProtoState }) {
     if (!grid) lay(focus, 0, w, 0);
   }
   const pos = new Map(blocks.map((b) => [b.n.id, b]));
+  // Colours come from the whole tree, not the current zoom, so a group keeps its
+  // colour when zooming in or out. An opened hatched block takes its owner's colour.
+  const colorOf = (n: OTNode) => nodeColor(n.id < 0 && n.parent ? n.parent : n, s.tree!.root);
 
   // ---- selection ----
   const selRest = restSel ? blocks.find((b) => b.rest && b.rest.owner.id === restSel.owner && b.rest.kind === restSel.kind) : undefined;
@@ -365,7 +368,7 @@ export function VariantA({ s }: { s: ProtoState }) {
             if (rest) {
               return (
                 <g key={n.id} onClick={() => tapRest(rest)} style={{ cursor: "pointer" }}>
-                  <rect x={x + 0.5} y={y + 0.5} width={Math.max(0, rw - 1)} height={ROW - 1} rx={3} fill={nodeColor(rest.owner, focus!)} fillOpacity={0.45} />
+                  <rect x={x + 0.5} y={y + 0.5} width={Math.max(0, rw - 1)} height={ROW - 1} rx={3} fill={colorOf(rest.owner)} fillOpacity={0.45} />
                   <rect
                     x={x + 0.5}
                     y={y + 0.5}
@@ -392,7 +395,7 @@ export function VariantA({ s }: { s: ProtoState }) {
                   width={Math.max(0, rw - 1)}
                   height={ROW - 1}
                   rx={3}
-                  fill={nodeColor(n, focus!)}
+                  fill={colorOf(n)}
                   stroke={sel ? "#fff" : "none"}
                   strokeWidth={2}
                 />
