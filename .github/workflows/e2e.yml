@@ -1,0 +1,145 @@
+name: E2E
+
+# Runs on pull requests, on manual dispatch, and (via deploy.yml) on every push
+# to main. `e2e-ok` always runs; make it the required status check on main.
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  # Decides which jobs this change needs (scripts/ci-matrix.ts). Path filtering
+  # happens here, not in `on:`, so that e2e-ok runs on every change.
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      selection: ${{ steps.select.outputs.selection }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - id: select
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          if [ "$EVENT" = workflow_dispatch ] || [ -z "$BASE" ] || [ "${BASE//0/}" = "" ] || ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
+            selection=$(node scripts/ci-matrix.ts --all)
+          else
+            selection=$(node scripts/ci-matrix.ts --base "$BASE")
+          fi
+          echo "selection=$selection" >> "$GITHUB_OUTPUT"
+          echo "$selection" | tee -a "$GITHUB_STEP_SUMMARY"
+
+  # One job per Example Repo: clone at the pin, parse, byte-compare.
+  example:
+    needs: changes
+    if: fromJSON(needs.changes.outputs.selection).repos
+    name: example (${{ matrix.name }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.changes.outputs.selection).matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: astral-sh/setup-uv@v5
+        if: matrix.toolchain == 'uv'
+        with:
+          enable-cache: true
+          cache-dependency-glob: parsers/python/uv.lock
+      - name: Parse and compare
+        env:
+          NAME: ${{ matrix.name }}
+          URL: ${{ matrix.url }}
+          COMMIT: ${{ matrix.commit }}
+          LANGUAGE: ${{ matrix.language }}
+          EXCLUDES: ${{ toJSON(matrix.exclude) }}
+          STRUCTRA_CHECK_OUT: ${{ runner.temp }}/examples-check-out
+        run: |
+          args=()
+          while IFS= read -r glob; do args+=(--exclude "$glob"); done < <(node -e 'for (const g of JSON.parse(process.env.EXCLUDES)) console.log(g)')
+          node scripts/examples-check.ts "$NAME" "$URL" "$COMMIT" "$LANGUAGE" "${args[@]}"
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: ${{ matrix.name }}-graph
+          path: ${{ runner.temp }}/examples-check-out
+          if-no-files-found: ignore
+
+  # Each toolchain's conformance fixtures.
+  fixtures-python:
+    needs: changes
+    if: contains(fromJSON(needs.changes.outputs.selection).fixtures, 'uv')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: parsers/python/uv.lock
+      - run: uv run --project parsers/python --frozen pytest
+
+  # Clone-free: the committed Graph Files must reproduce the committed
+  # dendrogram artifacts and snapshots byte for byte, and the unit tests pass.
+  node:
+    needs: changes
+    if: fromJSON(needs.changes.outputs.selection).app
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Rebuild dendrograms and snapshots from the committed Graph Files
+        run: |
+          out="$RUNNER_TEMP/regen"
+          node scripts/structra-dendrogram.ts examples/*.graph.json --out-dir "$out"
+          status=0
+          for file in "$out"/*; do
+            cmp "$file" "examples/$(basename "$file")" || status=1
+          done
+          exit $status
+      - run: npm test
+
+  playwright:
+    needs: changes
+    if: fromJSON(needs.changes.outputs.selection).app
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+
+  e2e-ok:
+    if: always()
+    needs: [changes, example, fixtures-python, node, playwright]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail if any selected job failed
+        env:
+          RESULTS: ${{ toJSON(needs.*.result) }}
+        run: |
+          echo "$RESULTS"
+          if echo "$RESULTS" | grep -Eq '"(failure|cancelled)"'; then exit 1; fi
