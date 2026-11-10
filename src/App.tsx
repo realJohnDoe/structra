@@ -22,6 +22,7 @@ import {
   type TreeNode,
 } from './app/icicle.ts'
 import { Icicle, IN_COLOUR, OUT_COLOUR } from './app/Icicle.tsx'
+import { PerfReadout } from './app/PerfReadout.tsx'
 import { adjacency } from './app/imports.ts'
 import { summarize } from './app/summary.ts'
 import { buildUploadedRepo, readGraphFile, type UploadReading } from './app/upload.ts'
@@ -126,8 +127,8 @@ export default function App() {
   })
 
   useEffect(() => {
-    window.history.replaceState(null, '', viewStateSearch({ repo: repoName, step }))
-  }, [repoName, step])
+    window.history.replaceState(null, '', viewStateSearch({ repo: repoName, step, perf: initial.perf }))
+  }, [repoName, step, initial])
 
   const stats = useMemo(() => repo && createGroupStats(repo.artifact, repo.graph), [repo])
   const adj = useMemo(() => repo && adjacency(repo.graph), [repo])
@@ -227,6 +228,7 @@ export default function App() {
           }}
         />
       </header>
+      {initial.perf && repo && tree && <PerfReadout repo={repo.name} files={repo.graph.nodes.length} tree={tree} step={step} setStep={setStep} />}
       {building && (
         <p className="notice" role="status">
           Loading {building} and building its Optimal Trees…

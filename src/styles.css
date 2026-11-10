@@ -345,3 +345,18 @@ select {
   outline: 2px dashed var(--accent);
   outline-offset: -6px;
 }
+
+.perf {
+  margin: 8px 16px 0;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel);
+  font-size: 11px;
+}
+
+.perf pre {
+  margin: 0 0 8px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
