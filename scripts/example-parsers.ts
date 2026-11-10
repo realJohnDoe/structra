@@ -7,9 +7,14 @@ export const parsers: Record<string, { command: string[]; toolchain: 'uv' | 'nod
     toolchain: 'uv',
     dir: 'parsers/python',
   },
-  // Hosted in the Python project.
+  // Rust and C are hosted in the Python project.
   rust: {
     command: ['uv', 'run', '--project', 'parsers/python', '--frozen', '--quiet', 'structra-parse-rust'],
+    toolchain: 'uv',
+    dir: 'parsers/python',
+  },
+  c: {
+    command: ['uv', 'run', '--project', 'parsers/python', '--frozen', '--quiet', 'structra-parse-c'],
     toolchain: 'uv',
     dir: 'parsers/python',
   },
