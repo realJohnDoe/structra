@@ -1,0 +1,35 @@
+# Quoted includes search the includer's directory first; angle includes don't.
+# Unresolved angle includes are system headers and are ignored; unresolved
+# quoted ones are reported. Includes in comments, macro includes and
+# #include_next don't count. Only .c and .h files are nodes.
+parser = "structra-parse-c"
+origin = "https://github.com/example/c-quoted-angle"
+stderr = [
+  "2 unresolved internal-looking imports",
+  "  ../../outside.h (1)",
+  "  missing.h (1)",
+]
+
+[files]
+"top.h" = ""
+"src/main.c" = """
+#include <stdio.h>
+#include "util.h"
+#  include "lib/helper.h"
+#include <sibling.h>
+#include "missing.h"
+#include "../../outside.h"
+/* #include "commented.h"
+   #include "commented.h" */
+// #include "commented.h"
+#include "../top.h" /* a trailing comment */
+#include "./util.h"
+#define NAME "/* not a comment */"
+#include CONFIG_H
+#include_next <util.h>
+"""
+"src/util.h" = ""
+"src/sibling.h" = ""
+"src/commented.h" = ""
+"src/lib/helper.h" = "#include \"../util.h\"\n"
+"src/notes.cpp" = "#include \"util.h\"\n"

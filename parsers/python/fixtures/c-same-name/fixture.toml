@@ -1,0 +1,18 @@
+# Headers with the same name in different directories: each include resolves
+# by the search rules, never by basename. One that the rules don't find is
+# reported, not guessed.
+parser = "structra-parse-c"
+origin = "https://github.com/example/c-same-name"
+stderr = [
+  "1 unresolved internal-looking imports",
+  "  util.h (1)",
+]
+
+[files]
+"util.h" = ""
+"main.c" = "#include \"util.h\"\n#include \"net/util.h\"\n"
+"net/util.h" = ""
+"net/socket.c" = "#include \"util.h\"\n"
+"disk/util.h" = ""
+"disk/io.c" = "#include \"util.h\"\n#include \"../util.h\"\n"
+"cli/cli.c" = "#include \"util.h\"\n"

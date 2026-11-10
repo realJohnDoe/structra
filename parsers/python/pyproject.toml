@@ -8,6 +8,7 @@ dependencies = []
 
 [project.scripts]
 structra-parse-python = "structra_parsers.python:main"
+structra-parse-c = "structra_parsers.c:main"
 
 [dependency-groups]
 dev = ["pytest", "grimp", "jsonschema"]

@@ -1,0 +1,22 @@
+{
+  "meta": {
+    "repo": "https://github.com/example/c-quoted-angle",
+    "commit": "de4bae991570104da2fd0e742a0af89a508f620e",
+    "language": "c",
+    "parser": { "name": "structra-parse-c" }
+  },
+  "nodes": [
+    "src/commented.h",
+    "src/lib/helper.h",
+    "src/main.c",
+    "src/sibling.h",
+    "src/util.h",
+    "top.h"
+  ],
+  "edges": [
+    ["src/lib/helper.h", "src/util.h"],
+    ["src/main.c", "src/lib/helper.h"],
+    ["src/main.c", "src/util.h"],
+    ["src/main.c", "top.h"]
+  ]
+}

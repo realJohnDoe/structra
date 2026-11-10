@@ -1,0 +1,37 @@
+# Search paths: literal -I flags of the build files (Makefile, makefile,
+# GNUmakefile, *.mk, *.mak*) in a file's directory and its ancestors, nearest
+# first, relative to the build file's directory; then each such directory's
+# include/. -I flags with variables, absolute paths, paths outside the
+# repository and flags in comments are ignored.
+parser = "structra-parse-c"
+origin = "https://github.com/example/c-include-dirs"
+
+[files]
+"Makefile" = """
+CFLAGS += -I. -I lib/api -I$(BUILD)/gen -I/usr/local/include -I../outside
+# CFLAGS += -Idoc
+"""
+"config.h" = ""
+"include/top.h" = ""
+"lib/api/api.h" = ""
+"lib/api/defs.h" = ""
+"doc/doc.h" = ""
+"gen/gen.h" = ""
+"app/main.c" = """
+#include <config.h>
+#include "api.h"
+#include <defs.h>
+#include <top.h>
+#include <doc.h>
+#include <gen.h>
+"""
+"engine/include/engine.h" = ""
+"engine/src/core.c" = "#include <engine.h>\n"
+"tools/build.mk" = "TOOL_CFLAGS = -Ilocal\n"
+"tools/local/x.h" = ""
+"tools/local/defs.h" = ""
+"tools/sub/t.c" = """
+#include "x.h"
+#include <config.h>
+#include <defs.h>
+"""

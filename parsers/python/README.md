@@ -1,10 +1,11 @@
 # Python-hosted Parsers
 
-The uv project behind `structra-parse-python` (and later `structra-parse-rust` and `structra-parse-c`). The CLI contract, the in-scope rules and the exit codes are in `docs/adr/0003-parser-architecture.md`. The Graph File rules are in `schema/README.md`.
+The uv project behind `structra-parse-python` and `structra-parse-c` (and later `structra-parse-rust`). The CLI contract, the in-scope rules and the exit codes are in `docs/adr/0003-parser-architecture.md`. The Graph File rules are in `schema/README.md`.
 
 ```sh
 uv sync                                    # pinned Python (.python-version) and dev dependencies
 uv run structra-parse-python PATH -o out.graph.json [--exclude GLOB]...
+uv run structra-parse-c PATH -o out.graph.json [--exclude GLOB]...
 uv run pytest                              # conformance fixtures and the grimp oracle
 ```
 
@@ -14,6 +15,7 @@ uv run pytest                              # conformance fixtures and the grimp 
 - `src/structra_parsers/scope.py`: which tracked files are In-scope Files.
 - `src/structra_parsers/graph_file.py`: the Python Graph File writer.
 - `src/structra_parsers/python.py`: Python import resolution with a stdlib-`ast` scanner. Its docstring states the resolution rules.
+- `src/structra_parsers/c.py`: C `#include` resolution with a regex scan and search paths from `-I` flags in Makefiles. Its docstring states the resolution rules.
 
 ## Conformance fixtures
 
@@ -21,6 +23,10 @@ Each `fixtures/<name>/fixture.toml` describes a tiny repository with its files i
 
 Fixture commits use a fixed author and date, so `meta.commit` is stable. When you add or change a fixture, take the new SHA from the test failure.
 
+Fixtures for other Parsers name their CLI with `parser` (the C fixtures are `c-*`).
+
 `tests/test_grimp_oracle.py` checks the Parser's edges against grimp's on every fixture's regular packages. Intended differences are listed, with reasons, in its `DIFFERENCES`.
 
 Python resolution doesn't see dynamic imports (`importlib.import_module`, `__import__`). Source roots are each project's directory and its `src/`, where a project is the repository root or a directory with a `pyproject.toml`, `setup.py` or `setup.cfg` (nearest project first).
+
+C resolution doesn't evaluate the build: `#if` branches and conditional `-I` flags all count, `-I` flags that use variables are skipped, and headers generated at build time stay unresolved.
