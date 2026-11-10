@@ -17,10 +17,18 @@ const graphs = import.meta.glob<string>(['../../examples/*.graph.json', '!**/toy
 const artifacts = import.meta.glob<string>(['../../examples/*.dendrogram.json', '!**/toy.*'], { query: '?raw', import: 'default' })
 const path = (name: string, kind: 'graph' | 'dendrogram') => `../../examples/${name}.${kind}.json`
 
+const listed = (parse(repoList) as { repo: { name: string; url: string }[] }).repo.filter(
+  (r) => path(r.name, 'graph') in graphs && path(r.name, 'dendrogram') in artifacts,
+)
+
 /** The Example Repos that ship artifacts, in Example Repo List order: the first is the default. */
-export const exampleRepos: string[] = (parse(repoList) as { repo: { name: string }[] }).repo
-  .map((r) => r.name)
-  .filter((name) => path(name, 'graph') in graphs && path(name, 'dendrogram') in artifacts)
+export const exampleRepos: string[] = listed.map((r) => r.name)
+
+/** An Example Repo's menu title, `owner/name` from its URL (e.g. `pallets/flask`). */
+export const exampleRepoTitle = (name: string): string => {
+  const url = listed.find((r) => r.name === name)?.url
+  return url ? new URL(url).pathname.replace(/^\/|\/$/g, '') : name
+}
 
 export async function loadExampleRepo(name: string): Promise<LoadedRepo> {
   const [graph, artifact] = await Promise.all([graphs[path(name, 'graph')](), artifacts[path(name, 'dendrogram')]()])

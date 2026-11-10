@@ -4,16 +4,16 @@ test('the first visit shows flask at λ 0.45, rooted at "All 83 files"', async (
   await page.goto('./')
   await expect(page.getByRole('combobox', { name: 'Example Repo' })).toHaveValue('flask')
   await expect(page.getByRole('slider', { name: 'Balance λ' })).toHaveValue('0.45')
-  await expect(page.getByTestId('icicle').getByRole('button').first()).toHaveText('All 83 files')
+  await expect(page.getByTestId('icicle').getByRole('button').first()).toHaveAccessibleName('All 83 files')
 })
 
-test('the repo menu lists the Example Repos in Example Repo List order', async ({ page }) => {
+test('the repo menu lists the Example Repos as owner/name, in Example Repo List order', async ({ page }) => {
   await page.goto('./')
   await expect(page.getByRole('combobox', { name: 'Example Repo' }).getByRole('option')).toHaveText([
-    'flask',
-    'requests',
-    'numpy',
-    'django',
+    'pallets/flask',
+    'psf/requests',
+    'numpy/numpy',
+    'django/django',
   ])
 })
 
@@ -74,7 +74,7 @@ test.describe('at phone width', () => {
   for (const lambda of ['0.00', '0.45', '1.00']) {
     test(`the page doesn't scroll sideways at λ ${lambda}`, async ({ page }) => {
       await page.goto(`./?repo=flask&lambda=${lambda}`)
-      await expect(page.getByTestId('icicle').getByRole('button').first()).toHaveText('All 83 files')
+      await expect(page.getByTestId('icicle').getByRole('button').first()).toHaveAccessibleName('All 83 files')
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
       expect(overflow).toBeLessThanOrEqual(0)
     })

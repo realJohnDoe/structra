@@ -1,45 +1,102 @@
-import { useMemo } from 'react'
-import type { GroupStatsCache } from '../core/groupStats.ts'
+import { useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import type { OptimalGroup } from '../core/sweep.ts'
-import { isGroup, keyOf, labelOf, layoutIcicle, ROW_HEIGHT, ROWS, type TreeNode } from './icicle.ts'
+import {
+  colourOf,
+  isDisplayOnly,
+  labelOf,
+  layoutView,
+  ROW_HEIGHT,
+  ROWS,
+  sizeOf,
+  type DisplayItem,
+  type Item,
+  type LayoutContext,
+} from './icicle.ts'
 
 interface Props {
   zoom: OptimalGroup
   zoomParent: OptimalGroup | null
-  stats: GroupStatsCache
+  opened: DisplayItem | null
+  ctx: LayoutContext
   colours: Map<string, string>
   selected: string | null
-  onTap: (node: TreeNode) => void
+  onTap: (item: Item) => void
 }
 
-export function Icicle({ zoom, zoomParent, stats, colours, selected, onTap }: Props) {
-  const blocks = useMemo(() => layoutIcicle(zoom, zoomParent, ROWS), [zoom, zoomParent])
+/** Block colours as CSS custom properties: solid for groups and files, outlined in the owner's colour for display-only blocks. */
+const colourStyle = (item: Item, colours: Map<string, string>): CSSProperties => ({ '--c': colourOf(item, colours) }) as CSSProperties
+
+const kindClass = (item: Item) => `block ${item.kind} ${isDisplayOnly(item) ? 'outlined' : 'solid'}`
+
+function Lines({ item, ctx, width }: { item: Item; ctx: LayoutContext; width: number }) {
+  const label = labelOf(item, ctx)
+  const size = sizeOf(item, width)
   return (
-    <div className="icicle" data-testid="icicle" style={{ height: ROWS * ROW_HEIGHT }}>
-      {blocks.map(({ node, parent, row, left, width }) => {
-        const key = keyOf(node)
-        const label = labelOf(node, parent, stats)
-        return (
-          <button
-            key={key}
-            type="button"
-            className={isGroup(node) ? 'block group' : 'block file'}
-            aria-pressed={selected === key}
-            aria-label={label}
-            title={label}
-            onClick={() => onTap(node)}
-            style={{
-              left: `${left * 100}%`,
-              width: `${width * 100}%`,
-              top: row * ROW_HEIGHT,
-              height: ROW_HEIGHT,
-              background: colours.get(key),
-            }}
-          >
-            <span>{label}</span>
-          </button>
-        )
-      })}
+    <>
+      {width >= 30 && <span className="block-label">{label}</span>}
+      {width >= 44 && size && <span className="block-size">{size}</span>}
+    </>
+  )
+}
+
+export function Icicle({ zoom, zoomParent, opened, ctx, colours, selected, onTap }: Props) {
+  const ref = useRef<HTMLDivElement>(null)
+  const [width, setWidth] = useState(0)
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    setWidth(el.clientWidth)
+    const observer = new ResizeObserver(() => setWidth(el.clientWidth))
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
+  const view = useMemo(
+    () => (width > 0 ? layoutView(zoom, zoomParent, opened, width, ctx) : null),
+    [zoom, zoomParent, opened, width, ctx],
+  )
+
+  const button = (item: Item, style: CSSProperties, w: number, key = item.key) => {
+    const label = labelOf(item, ctx)
+    const size = sizeOf(item)
+    // Display-only blocks are named with their size ("tests/ · 22 of 41 here"); groups and files by their label.
+    const name = isDisplayOnly(item) ? `${label} · ${size}` : label
+    return (
+      <button
+        key={key}
+        type="button"
+        className={`${kindClass(item)}${w < 30 ? ' narrow' : ''}`}
+        data-kind={item.kind}
+        aria-pressed={selected === item.key}
+        aria-label={name}
+        title={size ? `${label} · ${size}` : label}
+        onClick={() => onTap(item)}
+        style={{ ...colourStyle(item, colours), ...style }}
+      >
+        <Lines item={item} ctx={ctx} width={w} />
+      </button>
+    )
+  }
+
+  return (
+    <div ref={ref} className="icicle" data-testid="icicle" style={{ height: ROWS * ROW_HEIGHT }}>
+      {view?.kind === 'blocks' &&
+        view.blocks.map(({ item, row, left, width: w }) =>
+          button(item, { left, width: w, top: row * ROW_HEIGHT, height: ROW_HEIGHT }, w, `${item.key}@${row}`),
+        )}
+      {view?.kind === 'grid' && (
+        <>
+          <div className={`grid-header ${kindClass(view.header)}`} style={colourStyle(view.header, colours)}>
+            <span className="block-label">{labelOf(view.header, ctx)}</span>
+            <span className="block-size">
+              {view.header.kind === 'folder' ? sizeOf(view.header) : `${view.header.files} files`} · {view.tiles.length} items
+            </span>
+          </div>
+          <div className="tile-grid" data-testid="tile-grid" style={{ height: (ROWS - 1) * ROW_HEIGHT }}>
+            {view.tiles.map((item) => button(item, {}, Infinity))}
+          </div>
+        </>
+      )}
     </div>
   )
 }
