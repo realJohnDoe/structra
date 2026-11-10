@@ -113,4 +113,24 @@ describe('import lines', () => {
     const lines = importLines(blocks, adj, { kind: 'file', key: `f${t1.index}`, node: t1, files: 1 })
     expect(describeLines(lines, blocks, ctx)).toEqual(['other a/ – tests/ ×1 @0', 'out tests/ – a/ ×1 @0'])
   })
+
+  it('still highlights a selection outside the zoom, as stubs from the blocks it touches', () => {
+    const { blocks, adj, ctx, root } = scene(
+      TWO_GROUPS,
+      [
+        ['a/x.py', 'c/z.py'],
+        ['d/w.py', 'b/y.py'],
+        ['c/z.py', 'd/w.py'],
+      ],
+      1000,
+      2,
+    )
+    const g1 = root.children[0] as OptimalGroup
+    const lines = importLines(blocks, adj, { kind: 'group', key: `g${g1.id}`, node: g1, parent: root, files: 2 })
+    expect(describeLines(lines, blocks, ctx)).toEqual([
+      'in d/w.py – ⤒ ×1 @-',
+      'other c/z.py – d/w.py ×1 @0',
+      'out c/z.py – ⤒ ×1 @-',
+    ])
+  })
 })

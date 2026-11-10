@@ -2,7 +2,7 @@ import type { GroupStatsCache } from '../core/groupStats.ts'
 import { fileLabel } from '../core/groupStats.ts'
 import type { OptimalGroup } from '../core/sweep.ts'
 import { sizeText } from './folders.ts'
-import { childGroups, fileCount, isGroup, labelOf, membersOf, type DisplayItem, type Item, type LayoutContext, type TreeNode } from './icicle.ts'
+import { childGroups, fileCount, isGroup, keyOf, labelOf, membersOf, type DisplayItem, type Item, type LayoutContext, type TreeNode } from './icicle.ts'
 import { filesOf, importCounts, type Adjacency } from './imports.ts'
 
 /** Lists are cut here, with "… N more" after. */
@@ -48,7 +48,7 @@ function List<T>({ title, items, render }: { title?: string; items: T[]; render:
 /** The details card of a selected group, file, Folder Block or "+N more". No k and no cost numbers. */
 export function Details({ item, ctx, stats, adj, paths, groupLabel, onPick }: Props) {
   const node = (t: TreeNode, owner: OptimalGroup) => (
-    <li key={isGroup(t) ? `g${t.id}` : `f${t.index}`}>
+    <li key={keyOf(t)}>
       <button type="button" onClick={() => onPick(t)}>
         {isGroup(t) ? (
           <>

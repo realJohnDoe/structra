@@ -45,6 +45,16 @@ test('a selected group\'s card shows its files, subgroups, and imports within, t
   await expect(card).toContainText('← 0 from outside')
 })
 
+test('no card shows k or cost numbers', async ({ page }) => {
+  const noTheory = /\bk\b|cost|nats/i
+  await page.goto('./?repo=flask&lambda=0.60')
+  for (const name of ['tests/ · 23 of 41 here', 'docs/conf.py', '+2 more · 2 files']) {
+    await block(page, name).click()
+    await expect(details(page)).toBeVisible()
+    await expect(details(page)).not.toContainText(noTheory)
+  }
+})
+
 test('a file\'s card lists what it imports and what imports it', async ({ page }) => {
   await page.goto('./?repo=flask&lambda=0.45')
   await block(page, '{globals, wrappers, …}').click()

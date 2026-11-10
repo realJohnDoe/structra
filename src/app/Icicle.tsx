@@ -29,8 +29,12 @@ interface Props {
 /** Lime: what the selection imports. Orange: what imports it. */
 export const OUT_COLOUR = '#c8f060'
 export const IN_COLOUR = '#ff9a3c'
-const OTHER_COLOUR = '#d8dde4'
-const DRAW_ORDER = { other: 0, in: 1, out: 2 }
+/** Per kind of line: its colour, and its place in drawing order (highlighted lines on top). */
+const LINE_STYLE: Record<ImportLine['kind'], { colour: string; order: number }> = {
+  other: { colour: '#d8dde4', order: 0 },
+  in: { colour: IN_COLOUR, order: 1 },
+  out: { colour: OUT_COLOUR, order: 2 },
+}
 
 /** Import lines leave and reach blocks at their top edge, rising to the middle of their lowest common ancestor's row. */
 function linePath(line: ImportLine, blocks: Block[]): string {
@@ -48,7 +52,7 @@ function linePath(line: ImportLine, blocks: Block[]): string {
 
 function Lines({ blocks, adj, selection, width }: { blocks: Block[]; adj: Adjacency; selection: Item | null; width: number }) {
   const lines = useMemo(
-    () => importLines(blocks, adj, selection).sort((x, y) => DRAW_ORDER[x.kind] - DRAW_ORDER[y.kind]),
+    () => importLines(blocks, adj, selection).sort((x, y) => LINE_STYLE[x.kind].order - LINE_STYLE[y.kind].order),
     [blocks, adj, selection],
   )
   const highlighted = lines.some((l) => l.kind !== 'other')
@@ -61,7 +65,7 @@ function Lines({ blocks, adj, selection, width }: { blocks: Block[]; adj: Adjace
           d={linePath(l, blocks)}
           data-kind={l.kind}
           data-stub={l.b === null || undefined}
-          stroke={l.kind === 'out' ? OUT_COLOUR : l.kind === 'in' ? IN_COLOUR : OTHER_COLOUR}
+          stroke={LINE_STYLE[l.kind].colour}
           strokeOpacity={l.kind === 'other' ? otherOpacity : 0.85}
           strokeDasharray={l.b === null ? '2 3' : undefined}
         />

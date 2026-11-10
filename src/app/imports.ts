@@ -8,6 +8,7 @@ export interface Adjacency {
   in: number[][]
 }
 
+/** Reads each file's imports and importers off a Graph File's edges. */
 export function adjacency(graph: Pick<GraphFile, 'nodes' | 'edges'>): Adjacency {
   const index = new Map(graph.nodes.map((p, i) => [p, i]))
   const out: number[][] = graph.nodes.map(() => [])
@@ -95,14 +96,16 @@ export function importLines(blocks: Block[], adj: Adjacency, selection: Item | n
     return a
   }
 
+  // The block standing for the selection: itself, or the deepest block holding all its files.
+  // Without one (the selection reaches outside the zoom), each of its files stands for itself.
   let anchor: number | null = null
   let selected: Set<number> | null = null
   if (selection) {
     const files = filesOf(selection)
+    selected = new Set(files)
     const at = blocks.findIndex((b) => b.item.key === selection.key)
     if (at >= 0) anchor = at
     else if (files.every((f) => owner[f] >= 0)) anchor = files.reduce((x, f) => lca(x, owner[f]), owner[files[0]])
-    if (anchor !== null) selected = new Set(files)
   }
 
   const lines = new Map<string, ImportLine>()
@@ -120,7 +123,7 @@ export function importLines(blocks: Block[], adj: Adjacency, selection: Item | n
     for (const v of adj.out[u]) {
       const inU = selected?.has(u) ?? false
       const inV = selected?.has(v) ?? false
-      if (inU !== inV) add(inU ? 'out' : 'in', anchor!, inU ? owner[v] : owner[u])
+      if (inU !== inV) add(inU ? 'out' : 'in', anchor ?? (inU ? owner[u] : owner[v]), inU ? owner[v] : owner[u])
       else add('other', owner[u], owner[v])
     }
   }

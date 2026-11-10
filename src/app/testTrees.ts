@@ -14,6 +14,7 @@ function build(spec: Spec, paths: string[]): TreeNode {
 }
 const allFiles = (t: TreeNode): string[] => ('children' in t ? t.children.flatMap(allFiles) : [t.file])
 
+/** Builds a tree from `spec`, with a layout context that labels groups `G<id>` and the root `All`. */
 export function setup(spec: Spec, extraPaths: string[] = []) {
   const paths: string[] = []
   const root = build(spec, paths) as OptimalGroup
@@ -31,4 +32,5 @@ export function setup(spec: Spec, extraPaths: string[] = []) {
   return { root, ctx }
 }
 
+/** `n` file paths in folder `prefix`, sorted. */
 export const files = (prefix: string, n: number) => Array.from({ length: n }, (_, i) => `${prefix}/f${String(i).padStart(3, '0')}.py`)
