@@ -37,3 +37,10 @@ def test_version_prints_name_and_version() -> None:
     result = subprocess.run([CLI, "--version"], capture_output=True, text=True)
     assert result.returncode == 0
     assert result.stdout == "structra-parse-python 0.1.0\n"
+
+
+def test_rust_parser_shares_the_cli_contract() -> None:
+    help_text = subprocess.run(["structra-parse-rust", "--help"], capture_output=True, text=True)
+    assert help_text.stdout.startswith("usage: structra-parse-rust [-h] [-o FILE] [--exclude GLOB]")
+    version = subprocess.run(["structra-parse-rust", "--version"], capture_output=True, text=True)
+    assert version.stdout == "structra-parse-rust 0.1.0\n"

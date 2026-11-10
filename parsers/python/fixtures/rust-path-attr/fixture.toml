@@ -1,0 +1,58 @@
+# `#[path]`: relative to the declaring file's directory (even in a non-mod-rs
+# file), or to the enclosing inline module's directory. A file loaded through
+# `#[path]` acts as a mod.rs: its own `mod`s are its siblings. A module
+# declared under two `cfg`s with different paths links to both files, and
+# items inside macro invocations count. A `mod` without a file is reported.
+parser = "structra-parse-rust"
+origin = "https://github.com/example/rust-path-attr"
+stderr = [
+  "2 unresolved internal-looking imports",
+  "  src/lib.rs: mod generated (1)",
+  "  src/sys/unix.rs: mod missing (1)",
+]
+
+[files]
+"Cargo.toml" = """
+[package]
+name = "demo"
+edition = "2021"
+"""
+"src/lib.rs" = """
+#[cfg(unix)]
+#[path = "sys/unix.rs"]
+mod imp;
+#[cfg(windows)]
+// a comment between the attributes and the item
+#[path = "sys/windows.rs"]
+mod imp;
+
+cfg_feature! {
+    mod sync;
+}
+
+#[path = "other"]
+mod nest {
+    #[path = "inner.rs"]
+    mod inner;
+    mod plain;
+}
+
+include!(concat!(env!("OUT_DIR"), "/gen.rs"));
+mod generated;
+"""
+"src/sys/unix.rs" = """
+mod helper;
+mod missing;
+"""
+"src/sys/helper.rs" = ""
+"src/sys/windows.rs" = ""
+"src/sync.rs" = """
+macro_rules! private {
+    () => { mod not_a_module; };
+}
+#[path = "loose/x.rs"]  // src/loose/x.rs, not src/sync/loose/x.rs
+mod x;
+"""
+"src/loose/x.rs" = ""
+"src/other/inner.rs" = ""
+"src/other/plain.rs" = ""

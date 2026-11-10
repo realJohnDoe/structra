@@ -27,6 +27,7 @@ const examples = join(root, 'examples')
 // The command that runs each language's Parser, from the repository root.
 const parsers: Record<string, string[]> = {
   python: ['uv', 'run', '--project', 'parsers/python', '--frozen', '--quiet', 'structra-parse-python'],
+  rust: ['uv', 'run', '--project', 'parsers/python', '--frozen', '--quiet', 'structra-parse-rust'],
 }
 
 const list = (parse(readFileSync(join(examples, 'repos.toml'), 'utf8')) as unknown as { repo: ExampleRepo[] }).repo

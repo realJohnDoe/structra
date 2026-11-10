@@ -1,0 +1,91 @@
+# Workspaces: every target of every package is a crate (lib, src/main.rs,
+# [[bin]] paths, src/bin/*/main.rs, tests, examples, benches, build.rs).
+# A library is used from other crates by its crate name (`-` becomes `_`).
+# A package inside the workspace that isn't a member (legacy/) is read from
+# its Cargo.toml; it has no edition, so it is 2015, where `use` paths start at
+# the crate root. A file that no crate reaches is a crate root of its own
+# (scripts/standalone.rs).
+parser = "structra-parse-rust"
+origin = "https://github.com/example/rust-workspace"
+
+[files]
+"Cargo.toml" = """
+[workspace]
+members = ["crates/*"]
+exclude = ["fuzz"]
+
+[workspace.package]
+edition = "2021"
+"""
+"crates/core/Cargo.toml" = """
+[package]
+name = "my-core"
+version = "0.1.0"
+edition.workspace = true
+"""
+"crates/core/src/lib.rs" = "pub mod io;\n"
+"crates/core/src/io.rs" = ""
+"crates/core/examples/demo.rs" = "use my_core::*;\n"
+"crates/core/benches/speed/main.rs" = ""
+"crates/cli/Cargo.toml" = """
+[package]
+name = "cli"
+version = "0.1.0"
+edition.workspace = true
+
+[[bin]]
+name = "tool"
+path = "src/tool.rs"
+"""
+"crates/cli/build.rs" = ""
+"crates/cli/src/main.rs" = """
+mod args;
+use my_core::io::Reader;
+pub struct Config;
+"""
+"crates/cli/src/args.rs" = """
+use crate::Config;
+use ::my_core::io;
+"""
+"crates/cli/src/tool.rs" = "fn main() { my_core::io::read(); }\n"
+"crates/cli/src/bin/extra/main.rs" = "mod helper;\n"
+"crates/cli/src/bin/extra/helper.rs" = ""
+"crates/cli/tests/integration.rs" = """
+mod common;
+use my_core::io;
+"""
+"crates/cli/tests/common/mod.rs" = ""
+"legacy/Cargo.toml" = """
+[package]
+name = "legacy"
+version = "0.1.0"
+"""
+"legacy/src/lib.rs" = """
+mod a;
+mod b;
+"""
+"legacy/src/a.rs" = "use b::Thing;\n"
+"legacy/src/b.rs" = """
+use ::a::X;
+fn f() { other::x(); }
+"""
+"fuzz/Cargo.toml" = """
+[package]
+name = "fuzz"
+version = "0.0.0"
+edition = "2021"
+
+[workspace]
+members = ["."]
+
+[[bin]]
+name = "target1"
+path = "fuzz_targets/target1.rs"
+"""
+"fuzz/fuzz_targets/target1.rs" = "use my_core::io;\n"
+"scripts/standalone.rs" = """
+mod util;
+use crate::util::x;
+use my_core::io;
+"""
+"scripts/util.rs" = ""
