@@ -132,6 +132,7 @@ jobs:
       - name: Rebuild dendrograms and snapshots from the committed Graph Files
         run: |
           out="$RUNNER_TEMP/regen"
+          mkdir -p "$out"
           node scripts/structra-dendrogram.ts examples/*.graph.json --out-dir "$out"
           status=0
           for file in "$out"/*; do
