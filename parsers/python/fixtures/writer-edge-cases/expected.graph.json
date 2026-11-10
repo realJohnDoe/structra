@@ -1,0 +1,23 @@
+{
+  "meta": {
+    "repo": "https://github.com/example/writer-edge-cases",
+    "commit": "30db22eccae57c323bbe424fcc261c1a6b5c1bd3",
+    "language": "python",
+    "parser": { "name": "structra-parse-python" }
+  },
+  "nodes": [
+    "docs/ｚ.py",
+    "docs/😀.py",
+    "lonely.py",
+    "main.py",
+    "pkg/Mod.py",
+    "pkg/__init__.py",
+    "pkg/mod.py",
+    "über.py"
+  ],
+  "edges": [
+    ["main.py", "pkg/Mod.py"],
+    ["main.py", "über.py"],
+    ["pkg/mod.py", "pkg/Mod.py"]
+  ]
+}

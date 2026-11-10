@@ -1,0 +1,10 @@
+# A tracked file differs from HEAD: the Graph File would misname its commit.
+origin = "https://github.com/example/dirty"
+exit = 1
+stderr = ["uncommitted changes"]
+
+[files]
+"a.py" = ""
+
+[dirty]
+"a.py" = "import b\n"

@@ -1,0 +1,6 @@
+# Origin URL normalization, https form with credentials, a trailing .git and slash: meta.repo is the same
+# https://<host>/<owner>/<name> whichever way the repo was cloned.
+origin = "https://user:t0ken@GitHub.com/example/remote.git/"
+
+[files]
+"a.py" = ""

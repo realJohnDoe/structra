@@ -1,0 +1,17 @@
+{
+  "meta": {
+    "repo": "https://github.com/example/parse-failure",
+    "commit": "d534aaa55760750f4b63e7105f4bb240c35d5927",
+    "language": "python",
+    "parser": { "name": "structra-parse-python" }
+  },
+  "nodes": [
+    "good.py",
+    "nul.py",
+    "py2.py"
+  ],
+  "edges": [
+    ["good.py", "nul.py"],
+    ["good.py", "py2.py"]
+  ]
+}

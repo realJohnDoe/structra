@@ -1,0 +1,8 @@
+# A second PATH is a usage error.
+origin = "https://github.com/example/usage"
+args = ["another-path"]
+exit = 2
+stderr = ["usage: structra-parse-python"]
+
+[files]
+"a.py" = ""

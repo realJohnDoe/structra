@@ -1,0 +1,13 @@
+# Files that fail to parse stay nodes without outgoing edges; the run exits 0
+# and names them on stderr. Imports of them still count.
+origin = "https://github.com/example/parse-failure"
+stderr = [
+  "2 files failed to parse",
+  "  py2.py: SyntaxError",
+  "  nul.py: ",
+]
+
+[files]
+"good.py" = "import py2\nimport nul\n"
+"py2.py" = "import good\nprint 'hello'\n"
+"nul.py" = "import good\n\u0000\n"

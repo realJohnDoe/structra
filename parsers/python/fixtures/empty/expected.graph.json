@@ -1,0 +1,10 @@
+{
+  "meta": {
+    "repo": "https://github.com/example/empty",
+    "commit": "b40a6b80f5bce6f5d387c496e46debe142b022d5",
+    "language": "python",
+    "parser": { "name": "structra-parse-python" }
+  },
+  "nodes": [],
+  "edges": []
+}

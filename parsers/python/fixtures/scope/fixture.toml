@@ -1,0 +1,26 @@
+# In-scope Files: tracked .py/.pyi files, tests included, minus vendored
+# directories, submodules and --exclude globs (git pathspec glob syntax, where
+# `*` doesn't cross `/`). Importing an excluded file gives no edge.
+origin = "https://github.com/example/scope"
+args = ["--exclude", "generated/*.py", "--exclude", "docs/**"]
+gitlinks = ["libs/sub"]
+stderr = ["  generated.out (1)"]
+
+[files]
+"app.py" = """
+import generated.out
+import vendor.lib
+import helpers
+"""
+"helpers.py" = ""
+"stub.pyi" = ""
+"notes.txt" = "import helpers\n"
+"tests/test_app.py" = "import app\n"
+"generated/out.py" = ""
+"generated/keep/me.py" = ""
+"docs/conf.py" = ""
+"docs/api/a.py" = ""
+"vendor/lib.py" = ""
+"src/third_party/x.py" = ""
+"third-party/y.py" = ""
+"node_modules/z.py" = ""

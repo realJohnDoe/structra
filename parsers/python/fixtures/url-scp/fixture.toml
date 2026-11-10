@@ -1,0 +1,6 @@
+# Origin URL normalization, scp-style form: meta.repo is the same
+# https://<host>/<owner>/<name> whichever way the repo was cloned.
+origin = "git@github.com:example/remote.git"
+
+[files]
+"a.py" = ""

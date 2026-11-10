@@ -1,0 +1,31 @@
+{
+  "meta": {
+    "repo": "https://github.com/example/packages",
+    "commit": "5ed5e9c145879c8fab9478cadd9668f3f40aff71",
+    "language": "python",
+    "parser": { "name": "structra-parse-python" }
+  },
+  "nodes": [
+    "src/app/__init__.py",
+    "src/app/cli.py",
+    "src/app/core/__init__.py",
+    "src/app/core/engine.py",
+    "src/app/core/models.py",
+    "src/app/fast.py",
+    "src/app/fast.pyi",
+    "src/app/types.pyi",
+    "tests/helpers.py",
+    "tests/test_cli.py"
+  ],
+  "edges": [
+    ["src/app/__init__.py", "src/app/core/engine.py"],
+    ["src/app/cli.py", "src/app/core/__init__.py"],
+    ["src/app/cli.py", "src/app/core/engine.py"],
+    ["src/app/core/engine.py", "src/app/core/models.py"],
+    ["src/app/core/engine.py", "src/app/fast.py"],
+    ["src/app/core/engine.py", "src/app/types.pyi"],
+    ["src/app/core/models.py", "src/app/cli.py"],
+    ["tests/test_cli.py", "src/app/cli.py"],
+    ["tests/test_cli.py", "tests/helpers.py"]
+  ]
+}

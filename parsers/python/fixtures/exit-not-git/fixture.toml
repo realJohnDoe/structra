@@ -1,0 +1,7 @@
+# PATH must be the root of a git work tree.
+git = false
+exit = 1
+stderr = ["not a git work tree"]
+
+[files]
+"a.py" = ""

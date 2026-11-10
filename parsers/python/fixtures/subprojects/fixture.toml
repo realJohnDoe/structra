@@ -1,0 +1,27 @@
+# Sub-projects: a directory with a pyproject.toml, setup.py or setup.cfg is a
+# project whose own root and src/ are source roots for the files inside it,
+# looked up before those of enclosing projects (nearest project first). A
+# project's modules aren't visible from outside it.
+origin = "https://github.com/example/subprojects"
+
+[files]
+"pyproject.toml" = ""
+"src/core/__init__.py" = ""
+"tests/test_core.py" = """
+import core
+import flaskr
+"""
+"examples/tutorial/pyproject.toml" = ""
+"examples/tutorial/flaskr/__init__.py" = """
+from flaskr import db
+import core
+"""
+"examples/tutorial/flaskr/db.py" = ""
+"examples/tutorial/tests/test_db.py" = "from flaskr.db import get\n"
+"examples/celery/setup.py" = ""
+"examples/celery/src/core.py" = ""
+"examples/celery/src/task_app/__init__.py" = ""
+"examples/celery/make_celery.py" = """
+from task_app import celery_app
+import core
+"""
