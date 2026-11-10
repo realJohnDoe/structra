@@ -1,0 +1,56 @@
+# What gives an edge: ES imports and re-exports, `import type`, side-effect
+# imports, `require`, dynamic `import()`, `import x = require()`, `.js`
+# specifiers of `.ts` files, extensionless and directory (`index`) imports,
+# tsconfig `paths` (from the nearest tsconfig.json, `extends` flattened) and
+# package.json `imports`. Node built-ins, external packages and non-code files
+# give none; relative imports that don't resolve are counted on stderr.
+origin = "https://github.com/example/resolution"
+stderr = [
+  "2 unresolved internal-looking imports",
+  "  ./missing (1)",
+  "  #missing (1)",
+]
+
+[files]
+"package.json" = """
+{ "name": "app", "imports": { "#config": "./src/config.ts", "#missing": "./src/nope.ts" } }
+"""
+"tsconfig.base.json" = """
+{ "compilerOptions": { "baseUrl": ".", "paths": { "~/*": ["src/*"] } } }
+"""
+"tsconfig.json" = """
+{ "extends": "./tsconfig.base.json", "compilerOptions": { "moduleResolution": "bundler" } }
+"""
+"src/main.ts" = """
+import { readFileSync } from 'node:fs'
+import path from 'path'
+import express from 'express'
+import type { Options } from './types.js'
+import { util } from './util'
+import * as widgets from './widgets'
+import { alias } from '~/alias'
+import config from '#config'
+import missing from '#missing'
+import './side-effect.mjs'
+import './styles.css'
+import x from './missing'
+export { helper } from './helper.cts'
+export * from './reexport.mts'
+const legacy = require('./legacy.cjs')
+import fs = require('./assigned')
+async function load() {
+  return import('./lazy.jsx')
+}
+"""
+"src/types.ts" = "export interface Options {}\n"
+"src/util.ts" = ""
+"src/widgets/index.tsx" = ""
+"src/alias.ts" = ""
+"src/config.ts" = ""
+"src/side-effect.mjs" = ""
+"src/styles.css" = ""
+"src/helper.cts" = ""
+"src/reexport.mts" = ""
+"src/legacy.cjs" = ""
+"src/assigned.ts" = ""
+"src/lazy.jsx" = ""

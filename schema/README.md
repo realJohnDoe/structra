@@ -45,4 +45,4 @@ A Graph File has exactly one byte form, so two Parser runs on the same commit gi
 - An empty list is written `[]` on its key's line.
 - Strings are escaped as JSON requires and no further: non-ASCII characters are written as themselves (as `JSON.stringify` does, or Python's `json.dumps(…, ensure_ascii=False)`).
 
-`serializeGraphFile` in `src/core/graphFile.ts` is the TypeScript writer.
+`serializeGraphFile` in `src/core/graphFile.ts` is the app's TypeScript writer. The Parsers' writers are `parsers/python/src/structra_parsers/graph_file.py` and `parsers/typescript/src/graphFile.ts`.

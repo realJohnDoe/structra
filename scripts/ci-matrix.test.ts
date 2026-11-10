@@ -8,15 +8,15 @@ const repo = (name: string, language: string, commit = 'a'): ExampleRepo => ({
   commit,
   exclude: [],
 })
-const list = [repo('flask', 'python'), repo('requests', 'python'), repo('express', 'typescript')]
+const list = [repo('flask', 'python'), repo('requests', 'python'), repo('express', 'typescript'), repo('vite', 'typescript'), repo('ripgrep', 'rust')]
 const names = (s: ReturnType<typeof select>) => s.matrix.include.map((r) => r.name)
 const none = new Set<string>()
 
 describe('select', () => {
   it('runs everything on a manual run, but skips languages without a Parser', () => {
     const s = select(list, null, none)
-    expect(names(s)).toEqual(['flask', 'requests'])
-    expect(s).toMatchObject({ app: true, fixtures: ['uv'], repos: true })
+    expect(names(s)).toEqual(['flask', 'requests', 'express', 'vite'])
+    expect(s).toMatchObject({ app: true, fixtures: ['uv', 'node'], repos: true })
     expect(s.matrix.include[0].toolchain).toBe('uv')
   })
 
@@ -32,13 +32,19 @@ describe('select', () => {
     expect(s).toMatchObject({ app: false, fixtures: ['uv'] })
   })
 
+  it('runs the TypeScript canary and fixtures for a TypeScript Parser change', () => {
+    const s = select(list, ['parsers/typescript/src/resolve.ts'], none)
+    expect(names(s)).toEqual(['express'])
+    expect(s.fixtures).toEqual(['node'])
+  })
+
   it("runs one repo for its own artifact or list entry", () => {
     expect(names(select(list, ['examples/requests.graph.json'], none))).toEqual(['requests'])
     expect(names(select(list, ['examples/repos.toml'], new Set(['requests'])))).toEqual(['requests'])
   })
 
   it('runs every repo when the shared clone script changes', () => {
-    expect(names(select(list, ['scripts/clone-at-pin.sh'], none))).toEqual(['flask', 'requests'])
+    expect(names(select(list, ['scripts/clone-at-pin.sh'], none))).toEqual(['flask', 'requests', 'express', 'vite'])
   })
 
   it('runs nothing for a docs-only change', () => {

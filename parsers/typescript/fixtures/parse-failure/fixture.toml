@@ -1,0 +1,21 @@
+# Files that fail to parse stay nodes without outgoing edges; the run exits 0
+# and names them on stderr. A tracked symbolic link to a missing file can't be
+# read (and imports of it don't resolve). Flow's `import typeof` trips the
+# TypeScript parser, but the acorn fallback still reads that file's imports.
+origin = "https://github.com/example/parse-failure"
+stderr = [
+  "1 files failed to parse",
+  "  broken.js: ENOENT",
+  "  ./broken (1)",
+]
+
+[files]
+"good.js" = "import './broken'\nimport './flow'\n"
+"flow.js" = """
+// @flow
+import typeof * as API from './good';
+export * from './good';
+"""
+
+[symlinks]
+"broken.js" = "missing.js"

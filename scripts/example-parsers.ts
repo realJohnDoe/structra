@@ -6,4 +6,6 @@ export const parsers: Record<string, { command: string[]; toolchain: 'uv' | 'nod
     command: ['uv', 'run', '--project', 'parsers/python', '--frozen', '--quiet', 'structra-parse-python'],
     toolchain: 'uv',
   },
+  // Needs `npm ci --prefix parsers/typescript` first.
+  typescript: { command: ['node', 'parsers/typescript/src/cli.ts'], toolchain: 'node' },
 }

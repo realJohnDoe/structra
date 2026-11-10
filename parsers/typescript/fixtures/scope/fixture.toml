@@ -1,0 +1,45 @@
+# In-scope Files: tracked .ts/.tsx/.mts/.cts/.js/.jsx/.mjs/.cjs files, tests
+# included, minus vendored directories, submodules and --exclude globs (git
+# pathspec glob syntax, where `*` doesn't cross `/`). Importing an excluded,
+# vendored or untracked file gives no edge and is counted on stderr. Imports
+# of other languages' files are ignored.
+origin = "https://github.com/example/scope"
+args = ["--exclude", "generated/*.ts", "--exclude", "docs/**"]
+gitlinks = ["libs/sub"]
+stderr = [
+  "2 unresolved internal-looking imports",
+  "  ../generated/out (1)",
+  "  ../vendor/lib (1)",
+]
+
+[files]
+".gitignore" = "dist/\n"
+"src/app.ts" = """
+import { out } from '../generated/out'
+import { lib } from '../vendor/lib'
+import { helper } from './helpers'
+import data from './data.json'
+import './styles.css'
+"""
+"src/helpers.ts" = ""
+"src/data.json" = "{}\n"
+"src/styles.css" = ""
+"src/types.d.ts" = ""
+"src/view.tsx" = "import { helper } from './helpers'\n"
+"src/legacy.jsx" = ""
+"src/esm.mts" = ""
+"src/cjs.cts" = ""
+"src/plain.js" = ""
+"src/module.mjs" = ""
+"src/common.cjs" = ""
+"src/script.py" = "import helpers\n"
+"src/notes.txt" = "import './helpers'\n"
+"test/app.test.ts" = "import '../src/app'\n"
+"generated/out.ts" = ""
+"generated/keep/me.ts" = ""
+"docs/conf.js" = ""
+"docs/api/a.ts" = ""
+"vendor/lib.ts" = ""
+"src/third_party/x.ts" = ""
+"third-party/y.js" = ""
+"node_modules/z/index.js" = ""

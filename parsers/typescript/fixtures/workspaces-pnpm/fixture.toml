@@ -1,0 +1,34 @@
+# The workspace-symlink pre-step with a pnpm-workspace.yaml, whose packages
+# import each other by name. When two packages share a name, the first
+# directory (by codepoint) wins, with a warning.
+origin = "https://github.com/example/workspaces-pnpm"
+stderr = ["workspace package dup is in both apps/a-dup and apps/b-dup; using apps/a-dup"]
+
+[files]
+"package.json" = """
+{ "name": "monorepo", "private": true }
+"""
+"pnpm-workspace.yaml" = """
+# The workspace.
+packages:
+  - 'packages/*'
+  - "apps/*" # quoted either way
+overrides:
+  - 'not-a-package'
+"""
+"packages/lib/package.json" = """
+{ "name": "lib", "type": "module", "exports": "./index.js" }
+"""
+"packages/lib/index.js" = ""
+"apps/web/package.json" = """
+{ "name": "web" }
+"""
+"apps/web/main.ts" = "import lib from 'lib'\nimport dup from 'dup'\n"
+"apps/a-dup/package.json" = """
+{ "name": "dup" }
+"""
+"apps/a-dup/index.ts" = ""
+"apps/b-dup/package.json" = """
+{ "name": "dup" }
+"""
+"apps/b-dup/index.ts" = ""
