@@ -1,0 +1,20 @@
+{
+  "meta": {
+    "repo": "https://github.com/example/tsconfig-references",
+    "commit": "dbc071e802aef769b16bd3d561acb30e2f43388f",
+    "language": "typescript",
+    "parser": { "name": "structra-parse-typescript" }
+  },
+  "nodes": [
+    "scripts/tool.ts",
+    "src/main.ts",
+    "src/util.test.ts",
+    "src/util.ts",
+    "vite.config.ts"
+  ],
+  "edges": [
+    ["src/main.ts", "src/util.ts"],
+    ["src/util.test.ts", "src/util.ts"],
+    ["vite.config.ts", "src/util.ts"]
+  ]
+}

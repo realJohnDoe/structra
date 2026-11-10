@@ -3687,6 +3687,8 @@
     ["playground/resolve-linked/src/index.js", "playground/resolve-linked/dep.js"],
     ["playground/resolve-tsconfig-paths/src/hash.ts", "playground/resolve-tsconfig-paths/src/imported.js"],
     ["playground/resolve-tsconfig-paths/src/js.js", "playground/resolve-tsconfig-paths/src/imported.js"],
+    ["playground/resolve-tsconfig-paths/src/nested/a.ts", "playground/resolve-tsconfig-paths/src/nested/a-imported.ts"],
+    ["playground/resolve-tsconfig-paths/src/nested/b.ts", "playground/resolve-tsconfig-paths/src/nested/b-imported.ts"],
     ["playground/resolve-tsconfig-paths/src/nested/index.ts", "playground/resolve-tsconfig-paths/src/nested/a.ts"],
     ["playground/resolve-tsconfig-paths/src/nested/index.ts", "playground/resolve-tsconfig-paths/src/nested/b.ts"],
     ["playground/resolve-tsconfig-paths/src/ts.ts", "playground/resolve-tsconfig-paths/src/imported.js"],
