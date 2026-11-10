@@ -103,7 +103,14 @@ async function cruiseGroup(repo: string, files: string[], parser: SyntaxParser, 
           ...(tsConfig ? { tsConfig: { fileName: join(repo, config) } } : {}),
           outputType: 'json',
         },
-        { exportsFields: ['exports'], conditionNames: CONDITIONS, modules: ['node_modules', modules, 'node_modules/@types'] },
+        {
+          exportsFields: ['exports'],
+          conditionNames: CONDITIONS,
+          // Only the linked workspace packages: external packages give no
+          // edges, and an installed `node_modules` in the checkout must not
+          // change the output.
+          modules: [modules],
+        },
         tsConfig ? { tsConfig } : undefined,
       )
       return { result: typeof result.output === 'string' ? JSON.parse(result.output) : result.output, failed }
