@@ -1,3 +1,4 @@
+import type { Preset } from "./types";
 import { useRef } from "react";
 import { Box, Text, Group, Paper, ScrollArea } from "@mantine/core";
 import { Upload } from "lucide-react";
@@ -12,11 +13,6 @@ interface COLORS {
   dim: string;
 }
 
-interface Preset {
-  name: string;
-  description: string;
-  data: string;
-}
 
 interface RepoExplorerSidebarProps {
   repoLabel: string;
