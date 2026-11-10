@@ -4,7 +4,7 @@ import { folderCounts } from './app/folders.ts'
 import { colourTree, isDisplayOnly, labelOf, pathTo, resolveOpened, type DisplayItem, type Item, type LayoutContext } from './app/icicle.ts'
 import { Icicle } from './app/Icicle.tsx'
 import { summarize } from './app/summary.ts'
-import { buildUploadedRepo, readGraphFile } from './app/upload.ts'
+import { buildUploadedRepo, readGraphFile, type UploadReading } from './app/upload.ts'
 import { lambdaOf, readViewState, viewStateSearch } from './app/url.ts'
 import { STEPS } from './core/artifact.ts'
 import { createGroupStats } from './core/groupStats.ts'
@@ -25,7 +25,7 @@ export default function App() {
   const [repo, setRepo] = useState<LoadedRepo | null>(null)
   /** The uploaded Graph File being built, by file name. */
   const [building, setBuilding] = useState<string | null>(null)
-  const [uploadError, setUploadError] = useState<{ file: string; message: string; details: string[] } | null>(null)
+  const [uploadError, setUploadError] = useState<(Extract<UploadReading, { ok: false }> & { file: string }) | null>(null)
   const [dragging, setDragging] = useState(false)
   const fileInput = useRef<HTMLInputElement>(null)
   /** Counts loads, so only the latest one started is shown. */
@@ -59,17 +59,16 @@ export default function App() {
 
   // An invalid file leaves the shown repo in place; a valid one is built here, as offline, then shown.
   const upload = async (file: File) => {
-    const before = loads.current
+    const load = ++loads.current
     setUploadError(null)
     setBuilding(file.name)
     await afterPaint()
     const reading = readGraphFile(await file.text())
-    if (loads.current !== before) return // another repo was chosen meanwhile
+    if (load !== loads.current) return // another repo or file was chosen meanwhile
     if (!reading.ok) {
       setBuilding(null)
-      return setUploadError({ file: file.name, message: reading.message, details: reading.details })
+      return setUploadError({ ...reading, file: file.name })
     }
-    const load = ++loads.current
     const r = await buildUploadedRepo(reading.graph)
     if (load !== loads.current) return
     setBuilding(null)
@@ -170,7 +169,7 @@ export default function App() {
               </option>
             ))}
             <hr />
-            {repoName === null && repo && <option value={UPLOADED}>{repo.name}</option>}
+            {repoName === null && repo && <option value={UPLOADED}>{repo.name} (your file)</option>}
             <option value={UPLOAD}>Your own Graph File…</option>
           </select>
         </label>

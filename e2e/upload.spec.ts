@@ -34,7 +34,7 @@ test('"Your own Graph File…" in the menu uploads a Graph File and shows it lik
 
   await expect(root(page)).toHaveAccessibleName('All 83 files')
   await expect(page.getByTestId('summary')).toHaveText('12 groups · depth 5')
-  await expect(menu(page).locator('option:checked')).toHaveText('pallets/flask')
+  await expect(menu(page).locator('option:checked')).toHaveText('pallets/flask (your file)')
   await expect(page).toHaveURL(/\?lambda=0\.45$/)
 })
 
