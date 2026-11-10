@@ -21,6 +21,7 @@ test('the repo menu lists the Example Repos as owner/name, in Example Repo List 
     'tokio-rs/tokio',
     'redis/redis',
     'git/git',
+    'Your own Graph File…',
   ])
 })
 

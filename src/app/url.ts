@@ -21,6 +21,7 @@ export function readViewState(search: string, repos: string[]): ViewState {
   }
 }
 
-export function viewStateSearch({ repo, step }: ViewState): string {
-  return `?repo=${encodeURIComponent(repo)}&lambda=${lambdaOf(step)}`
+/** The URL query for a view; an uploaded Graph File (repo null) can't be linked to, so only λ is kept. */
+export function viewStateSearch({ repo, step }: { repo: string | null; step: number }): string {
+  return `?${repo === null ? '' : `repo=${encodeURIComponent(repo)}&`}lambda=${lambdaOf(step)}`
 }
