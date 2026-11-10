@@ -1,0 +1,25 @@
+# A file with a syntax error stays a node without outgoing edges and is
+# reported on stderr (ADR 0003). Imports of it still count. (Files that
+# aren't UTF-8 are reported the same way.)
+parser = "structra-parse-rust"
+origin = "https://github.com/example/rust-parse-failure"
+stderr = [
+  "1 files failed to parse (kept as nodes without edges):",
+  "  src/broken.rs: syntax error at line 2",
+]
+
+[files]
+"Cargo.toml" = """
+[package]
+name = "demo"
+edition = "2021"
+"""
+"src/lib.rs" = """
+mod broken;
+mod fine;
+"""
+"src/broken.rs" = """
+use crate::fine;
+fn {{{ garbage
+"""
+"src/fine.rs" = "use crate::broken;\n"
