@@ -1,0 +1,12 @@
+{
+  "meta": {
+    "repo": "https://github.com/example/remote",
+    "commit": "bdf24ed6431b9f2ac0d2548b5ee7109c1df20d60",
+    "language": "typescript",
+    "parser": { "name": "structra-parse-typescript" }
+  },
+  "nodes": [
+    "a.ts"
+  ],
+  "edges": []
+}
