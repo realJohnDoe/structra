@@ -1,10 +1,16 @@
 # In-scope Files: tracked .ts/.tsx/.mts/.cts/.js/.jsx/.mjs/.cjs files, tests
 # included, minus vendored directories, submodules and --exclude globs (git
-# pathspec glob syntax, where `*` doesn't cross `/`). Importing an excluded or
-# untracked file gives no edge. Imports of other languages' files are ignored.
+# pathspec glob syntax, where `*` doesn't cross `/`). Importing an excluded,
+# vendored or untracked file gives no edge and is counted on stderr. Imports
+# of other languages' files are ignored.
 origin = "https://github.com/example/scope"
 args = ["--exclude", "generated/*.ts", "--exclude", "docs/**"]
 gitlinks = ["libs/sub"]
+stderr = [
+  "2 unresolved internal-looking imports",
+  "  ../generated/out (1)",
+  "  ../vendor/lib (1)",
+]
 
 [files]
 ".gitignore" = "dist/\n"

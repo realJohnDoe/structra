@@ -10,7 +10,7 @@ export const EXTENSIONS = new Set(['.ts', '.tsx', '.mts', '.cts', '.js', '.jsx',
  * Tracked files outside vendored directories and submodules, minus paths
  * matching an `excludes` glob (git pathspec syntax).
  */
-export function trackedFiles(repo: string, excludes: readonly string[] = []): string[] {
+export function trackedFiles(repo: string, excludes: readonly string[]): string[] {
   const pathspecs = excludes.map((glob) => `:(top,glob,exclude)${glob}`)
   const out = execFileSync('git', ['-C', repo, 'ls-files', '-z', '--stage', '--', ...pathspecs], {
     encoding: 'utf8',

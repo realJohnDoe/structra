@@ -28,12 +28,16 @@ export interface PackageJson {
   typings?: unknown
 }
 
+/** A JSON object (not null, not an array). */
+export const isPlainObject = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value)
+
 const VALID_NAME = /^(?:@[^/@.][^/]*\/)?[^/@.][^/]*$/
 
 function readJson(path: string): PackageJson | undefined {
   try {
     const json: unknown = JSON.parse(readFileSync(path, 'utf8'))
-    return json && typeof json === 'object' && !Array.isArray(json) ? json : undefined
+    return isPlainObject(json) ? json : undefined
   } catch {
     return undefined
   }
@@ -90,8 +94,8 @@ export function workspacePackages(repo: string, tracked: readonly string[], diag
   if (trackedSet.has('package.json')) {
     const workspaces = readJson(join(repo, 'package.json'))?.workspaces
     patterns.push(...stringItems(workspaces))
-    if (workspaces && typeof workspaces === 'object' && !Array.isArray(workspaces)) {
-      patterns.push(...stringItems((workspaces as { packages?: unknown }).packages))
+    if (isPlainObject(workspaces)) {
+      patterns.push(...stringItems(workspaces.packages))
     }
   }
   if (trackedSet.has('pnpm-workspace.yaml')) {

@@ -16,6 +16,10 @@ export function compareCodepoints(a: string, b: string): number {
   return Buffer.compare(Buffer.from(a, 'utf8'), Buffer.from(b, 'utf8'))
 }
 
+/** Orders edges by importer, then imported, each by codepoint. */
+export const compareEdges = (a: readonly [string, string], b: readonly [string, string]) =>
+  compareCodepoints(a[0], b[0]) || compareCodepoints(a[1], b[1])
+
 const str = (s: string) => JSON.stringify(s)
 
 const list = (items: string[]) =>
@@ -36,7 +40,7 @@ export function serializeGraphFile(meta: Meta, nodes: Iterable<string>, edges: I
     if (!known.has(src) || !known.has(dst)) throw new Error(`edge (${str(src)}, ${str(dst)}) has an end outside nodes`)
     unique.set(`${src}\0${dst}`, [src, dst])
   }
-  const edgeList = [...unique.values()].sort((a, b) => compareCodepoints(a[0], b[0]) || compareCodepoints(a[1], b[1]))
+  const edgeList = [...unique.values()].sort(compareEdges)
   return [
     '{',
     '  "meta": {',

@@ -15,6 +15,8 @@
  *   [files]    path = content, committed
  *   [symlinks] path = target, committed as symbolic links
  *   [dirty]    path = content, written after the commit
+ *   [untracked] path = content, written after the commit (say, an installed
+ *              node_modules)
  *   gitlinks   paths committed as submodule entries
  *
  * Fixture commits use a fixed author and date, so `meta.commit` is stable.

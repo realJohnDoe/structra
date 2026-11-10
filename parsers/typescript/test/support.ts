@@ -6,7 +6,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSyn
 import { tmpdir, devNull } from 'node:os'
 import { dirname, join } from 'node:path'
 import type { TestContext } from 'node:test'
-import { compareCodepoints } from '../src/graphFile.ts'
+import { compareCodepoints, compareEdges } from '../src/graphFile.ts'
 
 const HERE = import.meta.dirname
 export const FIXTURES = join(HERE, '..', 'fixtures')
@@ -23,6 +23,7 @@ export interface Fixture {
   files?: Record<string, string>
   symlinks?: Record<string, string>
   dirty?: Record<string, string>
+  untracked?: Record<string, string>
   gitlinks?: string[]
 }
 
@@ -70,7 +71,7 @@ export async function buildCheckout(t: TestContext, spec: Fixture): Promise<stri
   }
   git(repo, 'commit', '--quiet', '--allow-empty', '--no-gpg-sign', '--message', 'fixture')
   if (spec.origin !== undefined) git(repo, 'remote', 'add', 'origin', spec.origin)
-  for (const [path, content] of Object.entries(spec.dirty ?? {})) write(repo, path, content)
+  for (const [path, content] of Object.entries({ ...spec.dirty, ...spec.untracked })) write(repo, path, content)
   return repo
 }
 
@@ -88,7 +89,7 @@ export function checkGraphFile(text: string): void {
   assert.deepEqual(nodes, [...new Set(nodes)].sort(compareCodepoints))
   const keys = edges.map(([a, b]) => `${a}\0${b}`)
   assert.equal(new Set(keys).size, keys.length)
-  const sorted = [...edges].sort((a, b) => compareCodepoints(a[0], b[0]) || compareCodepoints(a[1], b[1]))
+  const sorted = [...edges].sort(compareEdges)
   assert.deepEqual(edges, sorted)
   const known = new Set(nodes)
   for (const [src, dst] of edges) assert.ok(known.has(src) && known.has(dst) && src !== dst)

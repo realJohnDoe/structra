@@ -37,6 +37,7 @@ options:
 /** An error that stops the run with exit code 1. */
 class Fatal extends Error {}
 
+/** A usage error: exit code 2, after the usage line. */
 class Usage extends Error {}
 
 function git(repo: string, ...args: string[]): string {
@@ -57,6 +58,7 @@ export function normalizeOrigin(url: string): string {
   let host: string
   let port = ''
   let path: string
+  const unsupported = () => new Fatal(`can't turn the origin URL '${url}' into https://<host>/<owner>/<name>`)
   const scp = SCP.exec(url)
   if (scp) {
     host = scp[1]
@@ -66,11 +68,9 @@ export function normalizeOrigin(url: string): string {
     try {
       parts = new URL(url)
     } catch {
-      throw new Fatal(`can't turn the origin URL '${url}' into https://<host>/<owner>/<name>`)
+      throw unsupported()
     }
-    if (!SCHEMES.has(parts.protocol) || !parts.hostname) {
-      throw new Fatal(`can't turn the origin URL '${url}' into https://<host>/<owner>/<name>`)
-    }
+    if (!SCHEMES.has(parts.protocol) || !parts.hostname) throw unsupported()
     host = parts.hostname
     path = parts.pathname
     if (parts.protocol === 'https:' || parts.protocol === 'http:') port = parts.port

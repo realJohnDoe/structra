@@ -24,7 +24,7 @@ dependency-cruiser is pinned together with `typescript@5.9.x`: with TypeScript 7
 
 ## Conformance fixtures
 
-Each `fixtures/<name>/fixture.toml` describes a tiny repository with its files inline, in the same format as the Python toolchain's fixtures (plus `[symlinks]`). `test/fixtures.test.ts` builds it as a git checkout, runs the Parser as a process, and checks the exit code, stderr fragments and the Graph File bytes against `expected.graph.json`. The keys are listed in that test's docstring.
+Each `fixtures/<name>/fixture.toml` describes a tiny repository with its files inline, in the same format as the Python toolchain's fixtures (plus `[symlinks]` and `[untracked]`). `test/fixtures.test.ts` builds it as a git checkout, runs the Parser as a process, and checks the exit code, stderr fragments and the Graph File bytes against `expected.graph.json`. The keys are listed in that test's docstring.
 
 Fixture commits use a fixed author and date, so `meta.commit` is stable. `STRUCTRA_UPDATE_FIXTURES=1 npm test` rewrites the expected files; review the diff before you commit it.
 

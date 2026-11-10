@@ -16,9 +16,11 @@
  *   resolve by name through linked directories outside the checkout, with
  *   package.json `exports`. When an entry points at build output that isn't
  *   in the checkout, `resolveFromBuildOutput` maps it back to its source.
- * - An edge is kept when its target is an In-scope File. Unresolved imports
- *   count as internal-looking when they are relative (`./`, `../`), absolute,
- *   package `imports` (`#…`) or name a workspace package.
+ * - An edge is kept when its target is an In-scope File. An import that
+ *   doesn't resolve, or resolves to a TS/JS file that isn't in scope (excluded,
+ *   vendored or untracked), is counted on stderr when it looks internal: it is
+ *   relative (`./`, `../`), absolute, package `imports` (`#…`) or names a
+ *   workspace package.
  */
 import { cruise, type ICruiseResult, type IDependency } from 'dependency-cruiser'
 import { statSync } from 'node:fs'
@@ -27,6 +29,7 @@ import ts from 'typescript'
 import { resolveFromBuildOutput, splitSpecifier } from './buildOutput.ts'
 import type { Diagnostics } from './diagnostics.ts'
 import { compareCodepoints } from './graphFile.ts'
+import { EXTENSIONS } from './scope.ts'
 import { linkWorkspaces, workspacePackages, type WorkspacePackage } from './workspaces.ts'
 
 const CONDITIONS = ['import', 'require', 'node', 'module', 'development', 'default']
@@ -53,37 +56,63 @@ function groupByTsconfig(files: readonly string[], tracked: readonly string[]): 
 
 const NO_INPUTS = 18003 // "No inputs were found": irrelevant, as the Parser picks the files
 
+const inNodeModules = (path: string) => path.split(/[\\/]/).includes('node_modules')
+
 /**
- * The parsed tsconfig, `extends` flattened. Errors (an `extends` of a package
- * that isn't installed, say) are warned about, and what could be read is used.
+ * Reads files as `ts.sys` does, but never inside a `node_modules`: whether the
+ * checkout has its dependencies installed must not change the output.
+ */
+const configHost: ts.ParseConfigHost = {
+  useCaseSensitiveFileNames: ts.sys.useCaseSensitiveFileNames,
+  fileExists: (path) => !inNodeModules(path) && ts.sys.fileExists(path),
+  readFile: (path) => (inNodeModules(path) ? undefined : ts.sys.readFile(path)),
+  readDirectory: (root, extensions, excludes, includes, depth) =>
+    ts.sys.readDirectory(root, extensions, excludes, includes, depth).filter((path) => !inNodeModules(path)),
+}
+
+/**
+ * The parsed tsconfig, `extends` flattened. Errors (an `extends` of a package,
+ * which the Parser never reads from `node_modules`, say) are warned about, and
+ * what could be read is used.
  */
 function readTsconfig(repo: string, config: string, diagnostics: Diagnostics): ts.ParsedCommandLine | undefined {
   if (!config) return undefined
   const path = join(repo, config)
   const message = (diagnostic: ts.Diagnostic) =>
     ts.flattenDiagnosticMessageText(diagnostic.messageText, ' ').replaceAll(`${repo}/`, '')
-  const { config: json, error } = ts.readConfigFile(path, ts.sys.readFile)
+  const { config: json, error } = ts.readConfigFile(path, configHost.readFile)
   if (error) {
     diagnostics.warn(`${config} skipped: ${message(error)}`)
     return undefined
   }
-  const parsed = ts.parseJsonConfigFileContent(json, ts.sys, dirname(path), {}, path)
+  const parsed = ts.parseJsonConfigFileContent(json, configHost, dirname(path), {}, path)
   const errors = parsed.errors.filter((diagnostic) => diagnostic.code !== NO_INPUTS)
   if (errors.length) diagnostics.warn(`${config}: ${errors.map(message).join('; ')}`)
   return parsed
 }
 
-const FAILED_FILE = /\.\.\. in (.+)\n*$/
+/** The file a dependency-cruiser extraction error names (`... in <file>`). */
+const FILE_IN_EXTRACTION_ERROR = /\.\.\. in (.+)\n*$/
 
 /** The syntax parser dependency-cruiser extracts imports with. */
 type SyntaxParser = 'tsc' | 'acorn'
+
+/** What every cruise of one tsconfig group shares. */
+interface CruiseContext {
+  repo: string
+  /** The group's tsconfig.json, repo-relative ('' for none), and its parsed form. */
+  config: string
+  tsConfig: ts.ParsedCommandLine | undefined
+  /** The temporary `node_modules` with the linked workspace packages. */
+  workspaceModules: string
+}
 
 /**
  * Cruises `files` with `parser`. Returns the result and the files
  * dependency-cruiser failed to extract from, with the reason: they are left
  * out of the result.
  */
-async function cruiseGroup(repo: string, files: string[], parser: SyntaxParser, config: string, tsConfig: object | undefined, modules: string): Promise<{ result: ICruiseResult; failed: Map<string, string> }> {
+async function cruiseGroup({ repo, config, tsConfig, workspaceModules }: CruiseContext, files: string[], parser: SyntaxParser): Promise<{ result: ICruiseResult; failed: Map<string, string> }> {
   let remaining = files
   const failed = new Map<string, string>()
   for (;;) {
@@ -109,14 +138,14 @@ async function cruiseGroup(repo: string, files: string[], parser: SyntaxParser, 
           // Only the linked workspace packages: external packages give no
           // edges, and an installed `node_modules` in the checkout must not
           // change the output.
-          modules: [modules],
+          modules: [workspaceModules],
         },
         tsConfig ? { tsConfig } : undefined,
       )
       return { result: typeof result.output === 'string' ? JSON.parse(result.output) : result.output, failed }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
-      const file = FAILED_FILE.exec(message)?.[1]
+      const file = FILE_IN_EXTRACTION_ERROR.exec(message)?.[1]
       if (!file || !remaining.includes(file)) throw error
       const reason = message.split('\n').find((line) => line.trim() && !line.startsWith('Extracting'))?.trim()
       failed.set(file, reason ?? 'failed to parse')
@@ -124,6 +153,17 @@ async function cruiseGroup(repo: string, files: string[], parser: SyntaxParser, 
     }
   }
 }
+
+const resolvesToFile = (dependency: IDependency) => !dependency.couldNotResolve && !dependency.coreModule
+
+/**
+ * Whether an import that gave no edge missed the In-scope Files: it doesn't
+ * resolve, or resolves to a TS/JS file outside them (excluded, vendored or
+ * untracked). Imports of non-code files (`.css`, `.json`) don't count.
+ */
+const missesScope = (dependency: IDependency) =>
+  !dependency.coreModule &&
+  (dependency.couldNotResolve || EXTENSIONS.has(posix.extname(dependency.resolved)))
 
 function isInternalLooking(specifier: string, packages: ReadonlyMap<string, WorkspacePackage>): boolean {
   return /^(?:\.\.?(?:\/|$)|\/|#)/.test(specifier) || packages.has(splitSpecifier(specifier).name)
@@ -155,7 +195,7 @@ export async function resolveEdges(repo: string, files: readonly string[], track
     const edges: [string, string][] = []
     const inScopeTarget = (dependency: IDependency): string | undefined => {
       if (dependency.coreModule) return undefined
-      if (!dependency.couldNotResolve && inScope.has(dependency.resolved)) return dependency.resolved
+      if (resolvesToFile(dependency) && inScope.has(dependency.resolved)) return dependency.resolved
       const { name, subpath } = splitSpecifier(dependency.module)
       const pkg = packages.get(name)
       return pkg ? resolveFromBuildOutput(pkg, subpath, inScope) : undefined
@@ -163,11 +203,11 @@ export async function resolveEdges(repo: string, files: readonly string[], track
     const groups = groupByTsconfig(readableFiles(repo, files, diagnostics), tracked)
     for (const config of [...groups.keys()].sort(compareCodepoints)) {
       const group = groups.get(config)!
-      const tsConfig = readTsconfig(repo, config, diagnostics)
-      const tscPass = await cruiseGroup(repo, group, 'tsc', config, tsConfig, linked.modules)
+      const context = { repo, config, tsConfig: readTsconfig(repo, config, diagnostics), workspaceModules: linked.modules }
+      const tscPass = await cruiseGroup(context, group, 'tsc')
       // The TypeScript parser trips on some Flow syntax (`import typeof`);
       // acorn, with its loose fallback, gets the imports of most such files.
-      const acornPass = await cruiseGroup(repo, [...tscPass.failed.keys()], 'acorn', config, tsConfig, linked.modules)
+      const acornPass = await cruiseGroup(context, [...tscPass.failed.keys()], 'acorn')
       for (const [file, reason] of acornPass.failed) diagnostics.parseFailed(file, reason)
       const members = new Set(group)
       for (const module of [...tscPass.result.modules, ...acornPass.result.modules]) {
@@ -175,7 +215,7 @@ export async function resolveEdges(repo: string, files: readonly string[], track
         for (const dependency of module.dependencies) {
           const resolved = inScopeTarget(dependency)
           if (resolved) edges.push([module.source, resolved])
-          else if (dependency.couldNotResolve && isInternalLooking(dependency.module, packages)) {
+          else if (missesScope(dependency) && isInternalLooking(dependency.module, packages)) {
             diagnostics.unresolvedImport(dependency.module)
           }
         }

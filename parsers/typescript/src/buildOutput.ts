@@ -9,7 +9,7 @@
  */
 import { posix } from 'node:path'
 import { EXTENSIONS } from './scope.ts'
-import type { WorkspacePackage } from './workspaces.ts'
+import { isPlainObject, type WorkspacePackage } from './workspaces.ts'
 
 const BUILD_DIRS = new Set(['dist', 'lib', 'build', 'out', 'esm', 'cjs', 'es'])
 const SOURCE_EXTENSIONS = [...EXTENSIONS, '.d.ts', '.d.mts', '.d.cts']
@@ -33,12 +33,8 @@ function targets(value: unknown): string[] {
 
 /** The targets `exports` gives for `subpath`, with `*` patterns filled in. */
 function exportTargets(exportsField: unknown, subpath: string): string[] {
-  const isSubpathMap =
-    exportsField !== null &&
-    typeof exportsField === 'object' &&
-    !Array.isArray(exportsField) &&
-    Object.keys(exportsField).some((key) => key.startsWith('.'))
-  const map = (isSubpathMap ? exportsField : { '.': exportsField }) as Record<string, unknown>
+  const isSubpathMap = isPlainObject(exportsField) && Object.keys(exportsField).some((key) => key.startsWith('.'))
+  const map: Record<string, unknown> = isSubpathMap ? exportsField : { '.': exportsField }
   if (Object.hasOwn(map, subpath)) return targets(map[subpath])
   let best: { prefix: string; value: unknown; match: string } | undefined
   for (const [key, value] of Object.entries(map)) {
