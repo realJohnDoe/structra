@@ -29,3 +29,7 @@ Research findings go in `docs/research/<topic>.md`, and the ticket links to them
 - **Otherwise:** close the issue directly, with a summary comment.
 
 When a Wayfinder ticket closes, by either route, add its line to the map's "Decisions so far".
+
+## Trace Map on PRs
+
+Use the `tracemap-pr` skill from [realJohnDoe/tracemap](https://github.com/realJohnDoe/tracemap) (`skills/tracemap-pr/SKILL.md`) on every PR to add trace map images to its description; it decides itself when none would help.
