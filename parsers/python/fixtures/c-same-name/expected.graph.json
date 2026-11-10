@@ -1,0 +1,24 @@
+{
+  "meta": {
+    "repo": "https://github.com/example/c-same-name",
+    "commit": "a855c60a1d01ccfbf1675da98d7411effe69cbe2",
+    "language": "c",
+    "parser": { "name": "structra-parse-c" }
+  },
+  "nodes": [
+    "cli/cli.c",
+    "disk/io.c",
+    "disk/util.h",
+    "main.c",
+    "net/socket.c",
+    "net/util.h",
+    "util.h"
+  ],
+  "edges": [
+    ["disk/io.c", "disk/util.h"],
+    ["disk/io.c", "util.h"],
+    ["main.c", "net/util.h"],
+    ["main.c", "util.h"],
+    ["net/socket.c", "net/util.h"]
+  ]
+}
