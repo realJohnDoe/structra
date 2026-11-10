@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/realJohnDoe/structra/schema/graph-file.schema.json",
+  "title": "Structra Graph File",
+  "description": "The Dependency Graph of one repository at one commit, as emitted by a Parser. See README.md next to this file for the rules JSON Schema can't express (sorting, edge ends in nodes, no self-imports) and for the byte-level serialization.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["meta", "nodes", "edges"],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repo", "commit", "language", "parser"],
+      "properties": {
+        "repo": { "type": "string", "pattern": "^https://[^/@\\s]+/[^\\s]+[^/\\s]$" },
+        "commit": { "type": "string", "pattern": "^([0-9a-f]{40}|[0-9a-f]{64})$" },
+        "language": { "enum": ["python", "typescript", "rust", "c"] },
+        "parser": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["name"],
+          "properties": { "name": { "type": "string", "minLength": 1 } }
+        }
+      }
+    },
+    "nodes": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/path" }
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "type": "array",
+        "prefixItems": [{ "$ref": "#/$defs/path" }, { "$ref": "#/$defs/path" }],
+        "minItems": 2,
+        "maxItems": 2
+      }
+    }
+  },
+  "$defs": {
+    "path": {
+      "description": "A repo-relative POSIX path: no leading slash, no backslash, no empty segment.",
+      "type": "string",
+      "pattern": "^[^/\\\\]+(/[^/\\\\]+)*$"
+    }
+  }
+}

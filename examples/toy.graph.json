@@ -1,0 +1,29 @@
+{
+  "meta": {
+    "repo": "https://github.com/realJohnDoe/structra",
+    "commit": "0000000000000000000000000000000000000000",
+    "language": "python",
+    "parser": { "name": "hand-written" }
+  },
+  "nodes": [
+    "toy/__init__.py",
+    "toy/cli.py",
+    "toy/core/engine.py",
+    "toy/core/models.py",
+    "toy/core/store.py",
+    "toy/web/routes.py",
+    "toy/web/templates.py",
+    "toy/web/views.py"
+  ],
+  "edges": [
+    ["toy/__init__.py", "toy/cli.py"],
+    ["toy/cli.py", "toy/core/engine.py"],
+    ["toy/cli.py", "toy/web/routes.py"],
+    ["toy/core/engine.py", "toy/core/models.py"],
+    ["toy/core/engine.py", "toy/core/store.py"],
+    ["toy/core/store.py", "toy/core/models.py"],
+    ["toy/web/routes.py", "toy/web/views.py"],
+    ["toy/web/views.py", "toy/core/engine.py"],
+    ["toy/web/views.py", "toy/web/templates.py"]
+  ]
+}
