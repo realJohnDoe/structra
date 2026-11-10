@@ -28,7 +28,7 @@ def test_path_defaults_to_the_current_directory(tmp_path: Path) -> None:
     assert result.stdout == (FIXTURES / "packages" / "expected.graph.json").read_bytes()
 
 
-@pytest.mark.parametrize("cli", ["structra-parse-python", "structra-parse-c"])
+@pytest.mark.parametrize("cli", ["structra-parse-python", "structra-parse-rust", "structra-parse-c"])
 def test_help_describes_the_contract(cli: str) -> None:
     result = subprocess.run([cli, "--help"], capture_output=True, text=True)
     assert result.returncode == 0
@@ -36,7 +36,7 @@ def test_help_describes_the_contract(cli: str) -> None:
     assert "[PATH]" in result.stdout
 
 
-@pytest.mark.parametrize("cli", ["structra-parse-python", "structra-parse-c"])
+@pytest.mark.parametrize("cli", ["structra-parse-python", "structra-parse-rust", "structra-parse-c"])
 def test_version_prints_name_and_version(cli: str) -> None:
     result = subprocess.run([cli, "--version"], capture_output=True, text=True)
     assert result.returncode == 0

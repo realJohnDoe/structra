@@ -28,6 +28,7 @@ const examples = join(root, 'examples')
 const uvParser = (cli: string) => ['uv', 'run', '--project', 'parsers/python', '--frozen', '--quiet', cli]
 const parsers: Record<string, string[]> = {
   python: uvParser('structra-parse-python'),
+  rust: uvParser('structra-parse-rust'),
   c: uvParser('structra-parse-c'),
   // Needs `npm ci --prefix parsers/typescript` first.
   typescript: ['node', 'parsers/typescript/src/cli.ts'],
