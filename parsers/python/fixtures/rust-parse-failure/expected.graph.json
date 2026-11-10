@@ -1,0 +1,18 @@
+{
+  "meta": {
+    "repo": "https://github.com/example/rust-parse-failure",
+    "commit": "e912768e61e129cbe102ee41173c1e58960ee40f",
+    "language": "rust",
+    "parser": { "name": "structra-parse-rust" }
+  },
+  "nodes": [
+    "src/broken.rs",
+    "src/fine.rs",
+    "src/lib.rs"
+  ],
+  "edges": [
+    ["src/fine.rs", "src/broken.rs"],
+    ["src/lib.rs", "src/broken.rs"],
+    ["src/lib.rs", "src/fine.rs"]
+  ]
+}

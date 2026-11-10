@@ -17,6 +17,8 @@ test('the repo menu lists the Example Repos in Example Repo List order', async (
     'express',
     'vite',
     'react',
+    'ripgrep',
+    'tokio',
   ])
 })
 

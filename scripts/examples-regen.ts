@@ -27,6 +27,7 @@ const examples = join(root, 'examples')
 // The command that runs each language's Parser, from the repository root.
 const parsers: Record<string, string[]> = {
   python: ['uv', 'run', '--project', 'parsers/python', '--frozen', '--quiet', 'structra-parse-python'],
+  rust: ['uv', 'run', '--project', 'parsers/python', '--frozen', '--quiet', 'structra-parse-rust'],
   // Needs `npm ci --prefix parsers/typescript` first.
   typescript: ['node', 'parsers/typescript/src/cli.ts'],
 }
