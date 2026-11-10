@@ -22,6 +22,7 @@ import {
   type TreeNode,
 } from './app/icicle.ts'
 import { Icicle, IN_COLOUR, OUT_COLOUR } from './app/Icicle.tsx'
+import { afterPaint } from './app/perf.ts'
 import { PerfReadout } from './app/PerfReadout.tsx'
 import { adjacency } from './app/imports.ts'
 import { summarize } from './app/summary.ts'
@@ -34,9 +35,6 @@ import type { OptimalGroup } from './core/sweep.ts'
 /** The repo menu's values for "Your own Graph File…" and for the uploaded one once shown. */
 const UPLOAD = ':upload'
 const UPLOADED = ':uploaded'
-
-/** Resolves after the browser has painted, so a loading state shows before a long synchronous build. */
-const afterPaint = () => new Promise<void>((resolve) => requestAnimationFrame(() => setTimeout(resolve)))
 
 export default function App() {
   const [initial] = useState(() => readViewState(window.location.search, exampleRepos))
@@ -84,7 +82,7 @@ export default function App() {
     const load = ++loads.current
     setUploadError(null)
     setBuilding(file.name)
-    await afterPaint()
+    await afterPaint() // so the loading state shows before the long synchronous build
     const reading = readGraphFile(await file.text())
     if (load !== loads.current) return // another repo or file was chosen meanwhile
     if (!reading.ok) {
@@ -228,7 +226,7 @@ export default function App() {
           }}
         />
       </header>
-      {initial.perf && repo && tree && <PerfReadout repo={repo.name} files={repo.graph.nodes.length} tree={tree} step={step} setStep={setStep} />}
+      {initial.perf && repo && tree && <PerfReadout key={repo.name} repo={repo} tree={tree} step={step} setStep={setStep} />}
       {building && (
         <p className="notice" role="status">
           Loading {building} and building its Optimal Trees…

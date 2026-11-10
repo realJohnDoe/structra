@@ -3,7 +3,7 @@ import { timingReport } from './perf.ts'
 
 describe('timingReport', () => {
   it('names each budget, its measurement and whether it is met', () => {
-    const report = timingReport({ repo: 'facebook/react', files: 4445, firstTree: 640.4, redraws: [30, 120, 40, 50] })
+    const report = timingReport({ repoName: 'facebook/react', files: 4445, firstTree: 640.4, redraws: [30, 120, 40, 50] })
     expect(report).toEqual([
       'facebook/react, 4445 files',
       'first tree: 640 ms from page start (budget 1000 ms: met)',
@@ -12,11 +12,12 @@ describe('timingReport', () => {
   })
 
   it('reports a missed budget, and what is not measured yet', () => {
-    expect(timingReport({ repo: 'r', files: 1, firstTree: 1200, redraws: [] }).slice(1)).toEqual([
+    expect(timingReport({ repoName: 'r', files: 1, firstTree: 1200, redraws: [] }).slice(1)).toEqual([
       'first tree: 1200 ms from page start (budget 1000 ms: MISSED)',
       'redraw: move the slider, or tap Run',
     ])
-    expect(timingReport({ repo: 'r', files: 1, firstTree: null, redraws: [101, 150] })[2]).toBe(
+    expect(timingReport({ repoName: 'r', files: 1, firstTree: undefined, redraws: [] })[1]).toBe('first tree: reload the page on this repo to time it')
+    expect(timingReport({ repoName: 'r', files: 1, firstTree: null, redraws: [101, 150] })[2]).toBe(
       'redraw: median 126 ms, max 150 ms over 2 (budget 100 ms: MISSED)',
     )
   })

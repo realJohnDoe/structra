@@ -360,3 +360,8 @@ select {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+
+.perf p {
+  margin: 0 0 8px;
+  color: var(--dim);
+}
