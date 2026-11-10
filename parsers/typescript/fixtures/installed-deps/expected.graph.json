@@ -1,0 +1,16 @@
+{
+  "meta": {
+    "repo": "https://github.com/example/installed-deps",
+    "commit": "4cf8352a6e7b8dc91cfc61cba3933db1e928a8f9",
+    "language": "typescript",
+    "parser": { "name": "structra-parse-typescript" }
+  },
+  "nodes": [
+    "packages/app/main.ts",
+    "packages/app/src/a.ts",
+    "packages/core/src/index.ts"
+  ],
+  "edges": [
+    ["packages/app/main.ts", "packages/core/src/index.ts"]
+  ]
+}

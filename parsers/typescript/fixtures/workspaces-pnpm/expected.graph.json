@@ -1,0 +1,18 @@
+{
+  "meta": {
+    "repo": "https://github.com/example/workspaces-pnpm",
+    "commit": "7d0245e54cf4c17d3ca0fdbfdc85f224f9d9b119",
+    "language": "typescript",
+    "parser": { "name": "structra-parse-typescript" }
+  },
+  "nodes": [
+    "apps/a-dup/index.ts",
+    "apps/b-dup/index.ts",
+    "apps/web/main.ts",
+    "packages/lib/index.js"
+  ],
+  "edges": [
+    ["apps/web/main.ts", "apps/a-dup/index.ts"],
+    ["apps/web/main.ts", "packages/lib/index.js"]
+  ]
+}

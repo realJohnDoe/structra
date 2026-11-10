@@ -1,0 +1,6 @@
+# A Graph File must name its repository.
+exit = 1
+stderr = ["no origin remote"]
+
+[files]
+"a.ts" = ""

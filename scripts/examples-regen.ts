@@ -28,6 +28,8 @@ const examples = join(root, 'examples')
 const parsers: Record<string, string[]> = {
   python: ['uv', 'run', '--project', 'parsers/python', '--frozen', '--quiet', 'structra-parse-python'],
   rust: ['uv', 'run', '--project', 'parsers/python', '--frozen', '--quiet', 'structra-parse-rust'],
+  // Needs `npm ci --prefix parsers/typescript` first.
+  typescript: ['node', 'parsers/typescript/src/cli.ts'],
 }
 
 const list = (parse(readFileSync(join(examples, 'repos.toml'), 'utf8')) as unknown as { repo: ExampleRepo[] }).repo

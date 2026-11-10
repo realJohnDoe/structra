@@ -1,0 +1,56 @@
+# The workspace-symlink pre-step with npm workspaces: packages resolve by
+# name, with `exports` (subpaths and `*` patterns) and `main`. Entries that
+# point at build output an unbuilt checkout lacks map back to `src/`; a
+# subpath `exports` doesn't list still names its file. Directories outside the
+# `workspaces` globs, and imports that are only internal-looking by package
+# name, are not linked.
+origin = "https://github.com/example/workspaces-npm"
+stderr = [
+  "1 unresolved internal-looking imports",
+  "  @x/core/nothing (1)",
+]
+
+[files]
+"package.json" = """
+{ "name": "root", "private": true, "workspaces": ["packages/*", "tools/**", "!tools/skipped"] }
+"""
+"packages/core/package.json" = """
+{
+  "name": "@x/core",
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js", "require": "./dist/index.cjs" },
+    "./feature": "./src/feature.ts",
+    "./plugins/*": "./dist/plugins/*.js"
+  }
+}
+"""
+"packages/core/src/index.ts" = "export * from './feature'\n"
+"packages/core/src/feature.ts" = ""
+"packages/core/src/plugins/csv.ts" = ""
+"packages/core/src/internal.ts" = ""
+"packages/core/src/nothing/README.md" = ""
+"packages/util/package.json" = """
+{ "name": "@x/util", "main": "lib/util.js" }
+"""
+"packages/util/lib/util.js" = "module.exports = require('@x/core')\n"
+"packages/app/package.json" = """
+{ "name": "app" }
+"""
+"packages/app/index.ts" = """
+import { core } from '@x/core'
+import { feature } from '@x/core/feature'
+import csv from '@x/core/plugins/csv'
+import internal from '@x/core/src/internal'
+import nothing from '@x/core/nothing'
+import util from '@x/util'
+import nested from 'nested-tool'
+import skipped from 'skipped-tool'
+"""
+"tools/deep/nested/package.json" = """
+{ "name": "nested-tool" }
+"""
+"tools/deep/nested/index.js" = ""
+"tools/skipped/package.json" = """
+{ "name": "skipped-tool" }
+"""
+"tools/skipped/index.js" = ""
