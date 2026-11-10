@@ -1,0 +1,10 @@
+{
+  "meta": {
+    "repo": "https://github.com/example/empty",
+    "commit": "c6f8d7cbefcb516a6171c414d06dcb5443759623",
+    "language": "typescript",
+    "parser": { "name": "structra-parse-typescript" }
+  },
+  "nodes": [],
+  "edges": []
+}

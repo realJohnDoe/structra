@@ -1,0 +1,27 @@
+{
+  "meta": {
+    "repo": "https://github.com/example/scope",
+    "commit": "57ae9eb40b737525a23181c3fb883aa90657ebf8",
+    "language": "typescript",
+    "parser": { "name": "structra-parse-typescript" }
+  },
+  "nodes": [
+    "generated/keep/me.ts",
+    "src/app.ts",
+    "src/cjs.cts",
+    "src/common.cjs",
+    "src/esm.mts",
+    "src/helpers.ts",
+    "src/legacy.jsx",
+    "src/module.mjs",
+    "src/plain.js",
+    "src/types.d.ts",
+    "src/view.tsx",
+    "test/app.test.ts"
+  ],
+  "edges": [
+    ["src/app.ts", "src/helpers.ts"],
+    ["src/view.tsx", "src/helpers.ts"],
+    ["test/app.test.ts", "src/app.ts"]
+  ]
+}

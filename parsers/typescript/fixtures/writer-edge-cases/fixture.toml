@@ -1,0 +1,14 @@
+# The Graph File writer's edge cases (ADR 0003): a file without edges,
+# non-ASCII paths, paths that differ only in case, and codepoint order
+# (U+FF5A sorts before U+1F600 by codepoint, after it by UTF-16 code unit).
+origin = "https://github.com/example/writer-edge-cases"
+
+[files]
+"main.ts" = "import './über'\nimport { Mod } from './pkg/Mod'\n"
+"lonely.ts" = "const x = 1\n"
+"über.ts" = "/** Grüße. */\n"
+"pkg/index.ts" = ""
+"pkg/Mod.ts" = ""
+"pkg/mod.ts" = "export { Mod } from './Mod'\n"
+"docs/ｚ.ts" = ""
+"docs/😀.ts" = ""

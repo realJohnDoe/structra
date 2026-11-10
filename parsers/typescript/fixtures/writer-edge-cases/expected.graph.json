@@ -1,0 +1,23 @@
+{
+  "meta": {
+    "repo": "https://github.com/example/writer-edge-cases",
+    "commit": "2e28468972119f3cb3e29384a52db3ecdc47f130",
+    "language": "typescript",
+    "parser": { "name": "structra-parse-typescript" }
+  },
+  "nodes": [
+    "docs/ｚ.ts",
+    "docs/😀.ts",
+    "lonely.ts",
+    "main.ts",
+    "pkg/Mod.ts",
+    "pkg/index.ts",
+    "pkg/mod.ts",
+    "über.ts"
+  ],
+  "edges": [
+    ["main.ts", "pkg/Mod.ts"],
+    ["main.ts", "über.ts"],
+    ["pkg/mod.ts", "pkg/Mod.ts"]
+  ]
+}
