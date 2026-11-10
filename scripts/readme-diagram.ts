@@ -10,7 +10,9 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { buildArtifact, treeAt } from '../src/core/artifact.ts'
 import type { GraphFile } from '../src/core/graphFile.ts'
-import type { OptimalFile, OptimalGroup } from '../src/core/sweep.ts'
+import type { OptimalGroup } from '../src/core/sweep.ts'
+import { isGroup, type TreeNode } from '../src/app/icicle.ts'
+import { lambdaOf } from '../src/app/url.ts'
 
 /** The λ step drawn: 0.80, where the toy splits into three groups. */
 const STEP = 80
@@ -27,9 +29,6 @@ function parseArgs(argv: string[]): { out: string } | null {
   return { out }
 }
 
-type Node = OptimalGroup | OptimalFile
-const isGroup = (t: Node): t is OptimalGroup => 'children' in t
-
 const ROW = 30
 const TOP = 58
 const ANCHOR = 116 // x of the file dots; import arcs bulge left of it
@@ -37,20 +36,42 @@ const LEAF = 308 // x where the tree's leaf lines start
 const LEVEL = 34 // x per level of the tree
 const HUES = ['#2f7fd8', '#e0802a', '#2a9d6e', '#9b5de5', '#d64f7a']
 
+/** The SVG's stylesheet, with a dark variant for GitHub's dark theme. */
+const STYLE = [
+  '  <style>',
+  '    text { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; fill: #24292f; }',
+  '    .title { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 14px; font-weight: 600; }',
+  '    .label { fill: #57606a; }',
+  '    .ink { fill: #57606a; }',
+  '    .import { fill: none; stroke-width: 1.5; opacity: 0.85; }',
+  '    .across { stroke: #8c959f; stroke-dasharray: 4 3; }',
+  '    .tree { fill: none; stroke-width: 2; }',
+  '    .tree:not([stroke]) { stroke: #57606a; }',
+  '    #head path { fill: #8c959f; }',
+  '    @media (prefers-color-scheme: dark) {',
+  '      text { fill: #e6edf3; }',
+  '      .label, .ink { fill: #9198a1; }',
+  '      .tree:not([stroke]) { stroke: #9198a1; }',
+  '      .across { stroke: #6e7681; }',
+  '      #head path { fill: #6e7681; }',
+  '    }',
+  '  </style>',
+]
+
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 
-export function renderDiagram(graph: GraphFile, tree: OptimalGroup, lambda: string): string {
+function renderDiagram(graph: GraphFile, tree: OptimalGroup, lambda: string): string {
   // Leaf order, and each file's top-level group (the root's child it sits in).
   const order: string[] = []
-  const top = new Map<string, number>()
-  const collect = (t: Node, group: number) => {
+  const topGroupOf = new Map<string, number>()
+  const collect = (t: TreeNode, group: number) => {
     if (isGroup(t)) t.children.forEach((c) => collect(c, group))
     else {
       order.push(t.file)
-      top.set(t.file, group)
+      topGroupOf.set(t.file, group)
     }
   }
-  const groupIndex = new Map<Node, number>()
+  const groupIndex = new Map<TreeNode, number>()
   for (const child of tree.children) {
     if (isGroup(child)) groupIndex.set(child, groupIndex.size)
     collect(child, groupIndex.get(child) ?? -1)
@@ -58,7 +79,7 @@ export function renderDiagram(graph: GraphFile, tree: OptimalGroup, lambda: stri
   const colour = (group: number) => (group < 0 ? null : HUES[group % HUES.length])
   const y = (file: string) => TOP + order.indexOf(file) * ROW
 
-  const height = (t: Node): number => (isGroup(t) ? 1 + Math.max(...t.children.map(height)) : 0)
+  const height = (t: TreeNode): number => (isGroup(t) ? 1 + Math.max(...t.children.map(height)) : 0)
   const width = LEAF + LEVEL * height(tree) + 110
   const bottom = TOP + (order.length - 1) * ROW
   const out: string[] = []
@@ -67,7 +88,7 @@ export function renderDiagram(graph: GraphFile, tree: OptimalGroup, lambda: stri
   for (const [src, dst] of graph.edges) {
     const [y1, y2] = [y(src), y(dst)]
     const d = 16 + 0.5 * Math.abs(y2 - y1)
-    const inside = top.get(src) === top.get(dst) ? colour(top.get(src)!) : null
+    const inside = topGroupOf.get(src) === topGroupOf.get(dst) ? colour(topGroupOf.get(src)!) : null
     out.push(
       `  <path class="import${inside ? '' : ' across'}" d="M${ANCHOR - 6} ${y1} C${ANCHOR - 6 - d} ${y1} ${ANCHOR - 6 - d} ${y2} ${ANCHOR - 8} ${y2}"` +
         `${inside ? ` stroke="${inside}"` : ''} marker-end="url(#${inside ? `head-${HUES.indexOf(inside)}` : 'head'})"/>`,
@@ -76,7 +97,7 @@ export function renderDiagram(graph: GraphFile, tree: OptimalGroup, lambda: stri
 
   // Files: a dot and the path.
   for (const file of order) {
-    const fill = colour(top.get(file)!)
+    const fill = colour(topGroupOf.get(file)!)
     out.push(`  <circle cx="${ANCHOR}" cy="${y(file)}" r="4"${fill ? ` fill="${fill}"` : ' class="ink"'}/>`)
     out.push(`  <text class="file" x="${ANCHOR + 12}" y="${y(file) + 4}">${esc(file)}</text>`)
   }
@@ -84,42 +105,25 @@ export function renderDiagram(graph: GraphFile, tree: OptimalGroup, lambda: stri
   // The Optimal Tree as an elbow dendrogram, root on the right. A top-level group and
   // everything under it share one colour; the root and files directly in it stay neutral.
   const stroke = (c: string | null) => (c ? ` stroke="${c}"` : '')
-  const draw = (t: Node, c: string | null): { x: number; y: number } => {
+  const draw = (t: TreeNode, c: string | null): { x: number; y: number } => {
     if (!isGroup(t)) return { x: LEAF, y: y(t.file) }
     const kids = t.children.map((child) => {
-      const own = t === tree ? colour(isGroup(child) ? groupIndex.get(child)! : -1) : c
-      return { ...draw(child, own), c: own }
+      const childColour = t === tree ? colour(isGroup(child) ? groupIndex.get(child)! : -1) : c
+      return { ...draw(child, childColour), c: childColour }
     })
     const x = LEAF + LEVEL * height(t)
     out.push(`  <path class="tree"${stroke(c)} d="M${x} ${kids[0].y} V${kids[kids.length - 1].y}"/>`)
     for (const k of kids) out.push(`  <path class="tree"${stroke(k.c)} d="M${k.x} ${k.y} H${x}"/>`)
     return { x, y: (kids[0].y + kids[kids.length - 1].y) / 2 }
   }
-  const r = draw(tree, null)
-  out.push(`  <path class="tree" d="M${r.x} ${r.y} H${r.x + 10}"/>`)
-  out.push(`  <text class="label" x="${r.x + 16}" y="${r.y + 4}">All ${order.length} files</text>`)
+  const rootJoint = draw(tree, null)
+  out.push(`  <path class="tree" d="M${rootJoint.x} ${rootJoint.y} H${rootJoint.x + 10}"/>`)
+  out.push(`  <text class="label" x="${rootJoint.x + 16}" y="${rootJoint.y + 4}">All ${order.length} files</text>`)
 
   const total = bottom + 34
   return [
     `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${total}" viewBox="0 0 ${width} ${total}" role="img" aria-label="A toy Dependency Graph of ${order.length} files next to its Optimal Tree at λ = ${lambda}">`,
-    '  <style>',
-    '    text { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; fill: #24292f; }',
-    '    .title { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 14px; font-weight: 600; }',
-    '    .label { fill: #57606a; }',
-    '    .ink { fill: #57606a; }',
-    '    .import { fill: none; stroke-width: 1.5; opacity: 0.85; }',
-    '    .across { stroke: #8c959f; stroke-dasharray: 4 3; }',
-    '    .tree { fill: none; stroke-width: 2; }',
-    '    .tree:not([stroke]) { stroke: #57606a; }',
-    '    #head path { fill: #8c959f; }',
-    '    @media (prefers-color-scheme: dark) {',
-    '      text { fill: #e6edf3; }',
-    '      .label, .ink { fill: #9198a1; }',
-    '      .tree:not([stroke]) { stroke: #9198a1; }',
-    '      .across { stroke: #6e7681; }',
-    '      #head path { fill: #6e7681; }',
-    '    }',
-    '  </style>',
+    ...STYLE,
     '  <defs>',
     '    <marker id="head" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L8 4 L0 8 z"/></marker>',
     ...HUES.map(
@@ -142,5 +146,5 @@ if (!args) {
 }
 const graph: GraphFile = JSON.parse(readFileSync(join(root, 'examples', 'toy.graph.json'), 'utf8'))
 const artifact = await buildArtifact(graph)
-writeFileSync(args.out, renderDiagram(graph, treeAt(artifact, graph, STEP), (STEP / 100).toFixed(2)))
+writeFileSync(args.out, renderDiagram(graph, treeAt(artifact, graph, STEP), lambdaOf(STEP)))
 console.error(`wrote ${args.out}`)

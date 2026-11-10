@@ -79,4 +79,4 @@ The stills are phone-width screenshots of the built app (a Pixel 7 viewport), sh
 npm run readme:stills         # builds the app, writes docs/images/flask-<λ>.png
 ```
 
-They use the same Playwright harness as the e2e tests ([`e2e/readme.stills.ts`](e2e/readme.stills.ts), with `playwright.stills.config.ts`), but CI never runs them, so they don't gate `e2e-ok`. Regenerate them by hand when the app's look or flask's trees change, and check that the README captions still match.
+They use the same Playwright harness as the e2e tests ([`e2e/readme.stills.ts`](e2e/readme.stills.ts), with `playwright.stills.config.ts`), but CI never runs them, so they don't gate `e2e-ok`. Regenerate them by hand when the app's look or flask's trees change, and check that the README captions still match. When flask's pin changes, update the file count the script waits for (`All 83 files`) too.

@@ -45,7 +45,7 @@ $$
 \text{Total Cost} = \lambda \cdot \frac{1}{|E|} \sum_{e \in E} \text{Edge Cost}(e) \;+\; (1 - \lambda) \cdot \frac{1}{N} \sum_{\text{groups } x} \ln k(x)
 $$
 
-where k(x) is the number of children of group x, and an import's **Edge Cost** adds up ln k over the groups its path passes through. The second term is the **Node Cost** per file.
+where k(x) is the number of children of group x, and an import's **Edge Cost** adds up ln k over the groups its path through the tree crosses ([`GLOSSARY.md`](GLOSSARY.md) says exactly which). The second term is the **Node Cost** per file.
 
 - At **λ = 0** only Node Cost counts, and the Optimal Tree is one flat root.
 - At **λ = 1** only Edge Cost counts, and the tree is as deep as the imports justify.
