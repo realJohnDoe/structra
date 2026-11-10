@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
-import { exampleRepos, loadExampleRepo, type LoadedRepo } from './app/examples.ts'
-import { colourTree, isGroup, keyOf, pathTo, type TreeNode } from './app/icicle.ts'
+import { exampleRepos, exampleRepoTitle, loadExampleRepo, type LoadedRepo } from './app/examples.ts'
+import { folderCounts } from './app/folders.ts'
+import { colourTree, isDisplayOnly, labelOf, pathTo, resolveOpened, type DisplayItem, type Item, type LayoutContext } from './app/icicle.ts'
 import { Icicle } from './app/Icicle.tsx'
 import { summarize } from './app/summary.ts'
 import { lambdaOf, readViewState, viewStateSearch } from './app/url.ts'
@@ -16,6 +17,8 @@ export default function App() {
   /** Dendrogram ids of the groups zoomed through, root first; resolved against each step's tree. */
   const [zoomIds, setZoomIds] = useState<number[]>([])
   const [selected, setSelected] = useState<string | null>(null)
+  /** The display-only block opened in its owner group, if any. */
+  const [opened, setOpened] = useState<DisplayItem | null>(null)
 
   useEffect(() => {
     let live = true
@@ -24,6 +27,7 @@ export default function App() {
       setRepo(r)
       setZoomIds([])
       setSelected(null)
+      setOpened(null)
     })
     return () => {
       live = false
@@ -35,8 +39,18 @@ export default function App() {
   }, [repoName, step])
 
   const stats = useMemo(() => repo && createGroupStats(repo.artifact, repo.graph), [repo])
+  const ctx = useMemo(
+    (): LayoutContext | null =>
+      repo &&
+      stats && {
+        label: (g, parent) => stats.label(g.id, parent?.id ?? null),
+        folder: (g) => stats.of(g.id).folder,
+        counts: folderCounts(repo.graph.nodes),
+      },
+    [repo, stats],
+  )
   const tree = repo && repo.treeAt(step)
-  const colours = useMemo(() => tree && colourTree(tree), [tree])
+  const colours = useMemo(() => tree && ctx && colourTree(tree, ctx), [tree, ctx])
 
   // The deepest zoomed group that still exists at this step (a lower λ can merge it away).
   const zoomPath = useMemo(() => {
@@ -48,12 +62,22 @@ export default function App() {
     return [tree]
   }, [tree, zoomIds])
 
-  const zoomTo = (path: OptimalGroup[]) => setZoomIds(path.map((g) => g.id))
+  const zoom = zoomPath[zoomPath.length - 1]
+  const open = useMemo(() => (zoom && ctx ? resolveOpened(zoom, opened, ctx) : null), [zoom, opened, ctx])
 
-  const tap = (node: TreeNode) => {
-    const key = keyOf(node)
-    if (selected !== key) return setSelected(key)
-    if (isGroup(node) && node !== zoomPath[zoomPath.length - 1]) zoomTo(pathTo(tree!, node.id)!)
+  const zoomTo = (path: OptimalGroup[]) => {
+    setZoomIds(path.map((g) => g.id))
+    setOpened(null)
+  }
+
+  // Tap selects; a second tap zooms into a group or opens a display-only block in its owner.
+  const tap = (item: Item) => {
+    if (selected !== item.key) return setSelected(item.key)
+    if (item.kind === 'group' && item.node !== zoom) zoomTo(pathTo(tree!, item.node.id)!)
+    else if (isDisplayOnly(item) && item.key !== open?.key) {
+      setZoomIds(pathTo(tree!, item.owner.id)!.map((g) => g.id))
+      setOpened(item)
+    }
   }
 
   return (
@@ -64,18 +88,20 @@ export default function App() {
           <span className="visually-hidden">Example Repo</span>
           <select value={repoName} onChange={(e) => setRepoName(e.target.value)}>
             {exampleRepos.map((name) => (
-              <option key={name}>{name}</option>
+              <option key={name} value={name}>
+                {exampleRepoTitle(name)}
+              </option>
             ))}
           </select>
         </label>
       </header>
       <main className="main">
-        {tree && stats && colours && (
+        {tree && stats && ctx && colours && (
           <>
             <nav aria-label="Breadcrumb" className="breadcrumb">
               {zoomPath.map((g, i) => {
                 const label = stats.label(g.id, i ? zoomPath[i - 1].id : null)
-                return i === zoomPath.length - 1 ? (
+                return i === zoomPath.length - 1 && !open ? (
                   <span key={g.id} aria-current="location">
                     {label}
                   </span>
@@ -88,17 +114,19 @@ export default function App() {
                   </span>
                 )
               })}
+              {open && <span aria-current="location">{labelOf(open, ctx)}</span>}
             </nav>
             <Icicle
-              zoom={zoomPath[zoomPath.length - 1]}
+              zoom={zoom}
               zoomParent={zoomPath.length > 1 ? zoomPath[zoomPath.length - 2] : null}
-              stats={stats}
+              opened={open}
+              ctx={ctx}
               colours={colours}
               selected={selected}
               onTap={tap}
             />
             <section className="details" aria-label="Details">
-              {selected ? 'Details of the selection come in a later version.' : 'Tap a block to select it; tap it again to zoom in.'}
+              {selected ? 'Details of the selection come in a later version.' : 'Tap a block to select it; tap it again to zoom in or open it.'}
             </section>
           </>
         )}
