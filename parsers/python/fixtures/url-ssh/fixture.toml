@@ -1,0 +1,6 @@
+# Origin URL normalization, ssh:// form with a user and port: meta.repo is the same
+# https://<host>/<owner>/<name> whichever way the repo was cloned.
+origin = "ssh://git@github.com:22/example/remote.git"
+
+[files]
+"a.py" = ""

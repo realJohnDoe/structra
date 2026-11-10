@@ -1,0 +1,19 @@
+{
+  "meta": {
+    "repo": "https://github.com/example/scope",
+    "commit": "d27ad64f7ab836d14f1bb8d6a592c4307d55f126",
+    "language": "python",
+    "parser": { "name": "structra-parse-python" }
+  },
+  "nodes": [
+    "app.py",
+    "generated/keep/me.py",
+    "helpers.py",
+    "stub.pyi",
+    "tests/test_app.py"
+  ],
+  "edges": [
+    ["app.py", "helpers.py"],
+    ["tests/test_app.py", "app.py"]
+  ]
+}

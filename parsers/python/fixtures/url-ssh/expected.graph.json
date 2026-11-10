@@ -1,0 +1,12 @@
+{
+  "meta": {
+    "repo": "https://github.com/example/remote",
+    "commit": "6d19772a41c76172b3416412335f732b53e4c58d",
+    "language": "python",
+    "parser": { "name": "structra-parse-python" }
+  },
+  "nodes": [
+    "a.py"
+  ],
+  "edges": []
+}

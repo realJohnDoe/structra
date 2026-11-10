@@ -1,0 +1,8 @@
+# An unknown flag is a usage error.
+origin = "https://github.com/example/usage"
+args = ["--bogus"]
+exit = 2
+stderr = ["unrecognized arguments: --bogus"]
+
+[files]
+"a.py" = ""

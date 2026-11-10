@@ -1,0 +1,6 @@
+# A repository without Python files gives an empty graph.
+origin = "https://github.com/example/empty"
+
+[files]
+"README.md" = "no Python here\n"
+"lib/tool.js" = "import x from './y.js'\n"

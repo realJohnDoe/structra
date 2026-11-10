@@ -1,0 +1,46 @@
+# Relative and absolute imports across packages: a src/ layout, a test
+# directory without __init__.py, a stub next to its module, a stub-only module,
+# conditional and function-local imports, and imports that don't resolve.
+origin = "https://github.com/example/packages"
+stderr = [
+  "3 unresolved internal-looking imports",
+  "  ....too_far (1)",
+  "  .nothing (1)",
+  "  tests.nothing (1)",
+]
+
+[files]
+"src/app/__init__.py" = """
+from .core import engine
+from . import *
+"""
+"src/app/cli.py" = """
+import os
+import app.core.engine
+from app.core import missing_name
+import app.core.missing
+"""
+"src/app/core/__init__.py" = ""
+"src/app/core/engine.py" = """
+from ..fast import speed
+from .. import types
+
+def f():
+    from .models import Model
+"""
+"src/app/core/models.py" = """
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from app.cli import main
+"""
+"src/app/fast.py" = ""
+"src/app/fast.pyi" = "def speed() -> int: ...\n"
+"src/app/types.pyi" = ""
+"tests/helpers.py" = ""
+"tests/test_cli.py" = """
+from app import cli
+from . import helpers
+from . import nothing
+import tests.nothing
+from .... import too_far
+"""
