@@ -102,7 +102,7 @@ select {
   /* A transparent border leaves a small gap between neighbouring blocks. */
   border: 1px solid transparent;
   background-clip: padding-box;
-  border-radius: 4px;
+  border-radius: 3px;
   cursor: pointer;
   text-align: left;
   overflow: hidden;

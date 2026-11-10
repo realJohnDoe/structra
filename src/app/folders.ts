@@ -6,8 +6,10 @@ export interface FolderCounts {
   under: Map<string, number>
 }
 
+/** A path's folder ('' for the repo root). */
 export const folderOf = (path: string) => path.split('/').slice(0, -1).join('/')
 
+/** Counts the repo's files per folder, directly in it and anywhere under it. */
 export function folderCounts(paths: string[]): FolderCounts {
   const direct = new Map<string, number>()
   const under = new Map<string, number>()
@@ -56,8 +58,8 @@ export function bucketByFolder(files: OptimalFile[], prefix: string, counts: Fol
     else buckets.set(key, [f])
   }
   const out: Folder[] = []
-  for (const files of buckets.values()) {
-    const dirs = files.map((f) => folderOf(f.file).split('/'))
+  for (const here of buckets.values()) {
+    const dirs = here.map((f) => folderOf(f.file).split('/'))
     let common = dirs[0].length
     for (const d of dirs) {
       let j = 0
@@ -65,11 +67,11 @@ export function bucketByFolder(files: OptimalFile[], prefix: string, counts: Fol
       common = j
     }
     const dir = dirs[0].slice(0, common).join('/')
-    const direct = files.every((f) => folderOf(f.file) === dir)
+    const direct = here.every((f) => folderOf(f.file) === dir)
     const rel =
       dir === '' ? '(repo root)' : prefix === '' ? dir : dir.startsWith(prefix + '/') ? dir.slice(prefix.length + 1) : dir.split('/').pop()!
-    const total = (direct ? counts.direct.get(dir) : counts.under.get(dir)) ?? files.length
-    out.push({ dir, name: `${rel}/`, files, total })
+    const total = (direct ? counts.direct.get(dir) : counts.under.get(dir)) ?? here.length
+    out.push({ dir, name: `${rel}/`, files: here, total })
   }
   out.sort((a, b) => b.files.length - a.files.length || (a.dir < b.dir ? -1 : a.dir > b.dir ? 1 : 0))
   return out

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { exampleRepos, exampleRepoTitle, loadExampleRepo, type LoadedRepo } from './app/examples.ts'
 import { folderCounts } from './app/folders.ts'
-import { colourTree, labelOf, pathTo, resolveOpened, type DisplayItem, type Item, type LayoutContext } from './app/icicle.ts'
+import { colourTree, isDisplayOnly, labelOf, pathTo, resolveOpened, type DisplayItem, type Item, type LayoutContext } from './app/icicle.ts'
 import { Icicle } from './app/Icicle.tsx'
 import { summarize } from './app/summary.ts'
 import { lambdaOf, readViewState, viewStateSearch } from './app/url.ts'
@@ -63,7 +63,7 @@ export default function App() {
   }, [tree, zoomIds])
 
   const zoom = zoomPath[zoomPath.length - 1]
-  const open = useMemo(() => (zoom ? resolveOpened(zoom, opened) : null), [zoom, opened])
+  const open = useMemo(() => (zoom && ctx ? resolveOpened(zoom, opened, ctx) : null), [zoom, opened, ctx])
 
   const zoomTo = (path: OptimalGroup[]) => {
     setZoomIds(path.map((g) => g.id))
@@ -74,7 +74,7 @@ export default function App() {
   const tap = (item: Item) => {
     if (selected !== item.key) return setSelected(item.key)
     if (item.kind === 'group' && item.node !== zoom) zoomTo(pathTo(tree!, item.node.id)!)
-    else if ((item.kind === 'folder' || item.kind === 'more') && item.key !== open?.key) {
+    else if (isDisplayOnly(item) && item.key !== open?.key) {
       setZoomIds(pathTo(tree!, item.owner.id)!.map((g) => g.id))
       setOpened(item)
     }

@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import flaskDendrogram from '../../examples/flask.dendrogram.json?raw'
 import flaskGraph from '../../examples/flask.graph.json?raw'
+import flaskSnapshot from '../../examples/flask.snapshot.json?raw'
 import { parseArtifact, STEPS, treeAt } from '../core/artifact.ts'
 import type { GraphFile } from '../core/graphFile.ts'
 import { createGroupStats } from '../core/groupStats.ts'
 import { scoreTree } from '../core/scoreTree.ts'
+import { snapshot } from '../core/snapshot.ts'
 import type { OptimalGroup } from '../core/sweep.ts'
 import { folderCounts } from './folders.ts'
 import {
@@ -130,12 +132,20 @@ describe('icicle layout', () => {
   it('drops an opened block whose owner is no longer zoomed or whose members moved away', () => {
     const { root, ctx } = setup([0, [1, ...files('a', 190)], [2, ...files('b', 2)], 'c/one.py', 'c/two.py'])
     const more = blocksOf(layoutView(root, null, null, 400, ctx)).find((b) => b.item.kind === 'more')!.item as DisplayItem
-    expect(resolveOpened(root.children[0] as OptimalGroup, more)).toBeNull()
+    expect(resolveOpened(root.children[0] as OptimalGroup, more, ctx)).toBeNull()
     const moved = setup([0, [1, ...files('a', 190), [2, ...files('b', 2)], 'c/one.py', 'c/two.py']])
-    expect(resolveOpened(moved.root, more)).toBeNull()
+    expect(resolveOpened(moved.root, more, ctx)).toBeNull()
   })
 
-  it('never changes the tree or its Total Cost, with Folder Blocks on or off', () => {
+  it('recounts an opened "+N more" when a λ change moves some of its members away', () => {
+    const { root, ctx } = setup([0, [1, ...files('a', 190)], [2, ...files('b', 2)], 'c/one.py', 'c/two.py', 'd/x.py'])
+    const more = blocksOf(layoutView(root, null, null, 400, ctx)).find((b) => b.item.kind === 'more')!.item as DisplayItem
+    expect(labelOf(more, ctx)).toBe('+3 more')
+    const later = setup([0, [1, ...files('a', 190), [2, ...files('b', 2)]], 'c/one.py', 'c/two.py', 'd/x.py'])
+    expect(labelOf(resolveOpened(later.root, more, later.ctx)!, later.ctx)).toBe('+2 more')
+  })
+
+  it('never changes the tree, its Total Cost or the snapshot, with Folder Blocks on or off', async () => {
     const graph: GraphFile = JSON.parse(flaskGraph)
     const artifact = parseArtifact(flaskDendrogram)
     const stats = createGroupStats(artifact, graph)
@@ -157,6 +167,9 @@ describe('icicle layout', () => {
       }
       expect({ tree: canonical(tree), cost: scoreTree(tree, graph, step / 100).total }).toEqual(before)
     }
+    // The committed 101-step snapshot still holds after all that layout.
+    const committed = JSON.parse(flaskSnapshot) as { steps: unknown[] }
+    expect(await snapshot(artifact, graph)).toEqual(committed.steps)
   })
 
   it('gives every key in one view once', () => {

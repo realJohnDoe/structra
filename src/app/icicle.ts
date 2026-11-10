@@ -17,6 +17,7 @@ export const isGroup = (t: TreeNode): t is OptimalGroup => 'children' in t
 export const keyOf = (t: TreeNode) => (isGroup(t) ? `g${t.id}` : `f${t.index}`)
 
 const counts = new WeakMap<OptimalGroup, number>()
+/** The number of files in a node, cached per group. */
 export const fileCount = (t: TreeNode): number => {
   if (!isGroup(t)) return 1
   let n = counts.get(t)
@@ -45,6 +46,7 @@ export type Item =
   | { kind: 'file'; key: string; node: OptimalFile; files: 1 }
   | DisplayItem
 
+/** A display-only block: it stands for some direct children of its `owner` and is never a group of the tree. */
 export type DisplayItem =
   | { kind: 'folder'; key: string; owner: OptimalGroup; folder: Folder; files: number }
   | { kind: 'more'; key: string; owner: OptimalGroup; members: TreeNode[]; count: number; files: number }
@@ -106,8 +108,10 @@ export function childGroups(node: OptimalGroup, ctx: Pick<LayoutContext, 'label'
 
 function sortGroups(groups: OptimalGroup[], parent: OptimalGroup, ctx: Pick<LayoutContext, 'label'>) {
   const label = new Map(groups.map((g) => [g, ctx.label(g, parent)]))
+  // Ties break by label, then node id (ADR 0002's stable order).
   return [...groups].sort(
-    (a, b) => fileCount(b) - fileCount(a) || (label.get(a)! < label.get(b)! ? -1 : label.get(a)! > label.get(b)! ? 1 : 0),
+    (a, b) =>
+      fileCount(b) - fileCount(a) || (label.get(a)! < label.get(b)! ? -1 : label.get(a)! > label.get(b)! ? 1 : 0) || a.id - b.id,
   )
 }
 
@@ -136,13 +140,28 @@ export type View = { kind: 'blocks'; blocks: Block[] } | { kind: 'grid'; header:
  * in its owner, and keeps only the members still directly in it (a λ change can
  * move them). Null when nothing of it is left.
  */
-export function resolveOpened(zoom: OptimalGroup, opened: DisplayItem | null): DisplayItem | null {
+export function resolveOpened(zoom: OptimalGroup, opened: DisplayItem | null, ctx: LayoutContext): DisplayItem | null {
   if (!opened || opened.owner.id !== zoom.id) return null
   const keys = new Set(membersOf(opened).map(keyOf))
   const members = zoom.children.filter((c) => keys.has(keyOf(c)))
   if (!members.length) return null
   if (opened.kind === 'folder') return folderItem(zoom, { ...opened.folder, files: members as OptimalFile[] })
-  return moreItem(zoom, members, opened.count)
+  return moreItem(zoom, members, splitMembers(zoom, members, ctx).length)
+}
+
+/** Groups (largest first), then multi-file Folder Blocks, then single files: the order display-only contents are drawn in. */
+function splitMembers(owner: OptimalGroup, members: TreeNode[], ctx: LayoutContext): Item[] {
+  const groups = sortGroups(members.filter(isGroup), owner, ctx).map((g) => groupItem(g, owner))
+  const buckets = folders(
+    owner,
+    members.filter((m): m is OptimalFile => !isGroup(m)),
+    ctx,
+  )
+  return [
+    ...groups,
+    ...buckets.filter((b) => b.files.length > 1).map((b) => folderItem(owner, b)),
+    ...buckets.filter((b) => b.files.length === 1).map((b) => fileItem(b.files[0])),
+  ]
 }
 
 /**
@@ -197,12 +216,12 @@ export function layoutView(
     // A "+1" block would be as wide as the one thing in it: draw that thing instead.
     if (small.length === 1) put(small[0])
     else if (small.length) {
-      const members = small.flatMap((s): TreeNode[] => (s.kind === 'group' || s.kind === 'file' ? [s.node] : membersOf(s as DisplayItem)))
+      const members = small.flatMap((s): TreeNode[] => (isDisplayOnly(s) ? membersOf(s) : [s.node]))
       put(moreItem(owner, members, small.length))
     }
   }
 
-  const open = resolveOpened(zoom, opened)
+  const open = resolveOpened(zoom, opened, ctx)
   if (!open) {
     lay(groupItem(zoom, zoomParent), 0, 0, width)
     return { kind: 'blocks', blocks }
@@ -210,29 +229,13 @@ export function layoutView(
   const members = membersOf(open)
   const per = width / open.files
   const grid = members.some((m) => (isGroup(m) ? fileCount(m) * per < GROUP_MIN : per < FILE_MIN))
-  if (grid) return { kind: 'grid', header: open, tiles: tilesOf(open, ctx) }
+  if (grid) return { kind: 'grid', header: open, tiles: open.kind === 'folder' ? open.folder.files.map(fileItem) : splitMembers(open.owner, open.members, ctx) }
   blocks.push({ item: open, row: 0, left: 0, width })
   layChildren(zoom, members, open.kind === 'folder', 1, 0, width)
   return { kind: 'blocks', blocks }
 }
 
-/** Tiles of an opened block: its groups, then (for "+N more", re-bucketed) its Folder Blocks, then its files. */
-function tilesOf(open: DisplayItem, ctx: LayoutContext): Item[] {
-  if (open.kind === 'folder') return open.folder.files.map(fileItem)
-  const owner = open.owner
-  const groups = sortGroups(open.members.filter(isGroup), owner, ctx).map((g) => groupItem(g, owner))
-  const buckets = folders(
-    owner,
-    open.members.filter((m): m is OptimalFile => !isGroup(m)),
-    ctx,
-  )
-  return [
-    ...groups,
-    ...buckets.filter((b) => b.files.length > 1).map((b) => folderItem(owner, b)),
-    ...buckets.filter((b) => b.files.length === 1).map((b) => fileItem(b.files[0])),
-  ]
-}
-
+/** The colour of every file block. */
 export const FILE_COLOUR = '#8a919c'
 const ROOT_COLOUR = 'hsl(80 10% 45%)'
 

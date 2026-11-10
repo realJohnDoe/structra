@@ -86,10 +86,11 @@ export function Icicle({ zoom, zoomParent, opened, ctx, colours, selected, onTap
         )}
       {view?.kind === 'grid' && (
         <>
-          <div className={`grid-header ${kindClass(view.header)}`} style={colourStyle(view.header, colours)}>
+          {/* The header takes its owner's colour: outlined for an opened folder, solid for "+N more", as in the prototype. */}
+          <div className={`grid-header block ${view.header.kind} ${view.header.kind === 'folder' ? 'outlined' : 'solid'}`} style={colourStyle(view.header, colours)}>
             <span className="block-label">{labelOf(view.header, ctx)}</span>
             <span className="block-size">
-              {view.header.kind === 'folder' ? sizeOf(view.header) : `${view.header.files} files`} · {view.tiles.length} items
+              {sizeOf(view.header)} · {view.tiles.length} items
             </span>
           </div>
           <div className="tile-grid" data-testid="tile-grid" style={{ height: (ROWS - 1) * ROW_HEIGHT }}>
