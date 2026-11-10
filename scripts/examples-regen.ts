@@ -25,9 +25,10 @@ const root = join(import.meta.dirname, '..')
 const examples = join(root, 'examples')
 
 // The command that runs each language's Parser, from the repository root.
+const uvParser = (cli: string) => ['uv', 'run', '--project', 'parsers/python', '--frozen', '--quiet', cli]
 const parsers: Record<string, string[]> = {
-  python: ['uv', 'run', '--project', 'parsers/python', '--frozen', '--quiet', 'structra-parse-python'],
-  c: ['uv', 'run', '--project', 'parsers/python', '--frozen', '--quiet', 'structra-parse-c'],
+  python: uvParser('structra-parse-python'),
+  c: uvParser('structra-parse-c'),
 }
 
 const list = (parse(readFileSync(join(examples, 'repos.toml'), 'utf8')) as unknown as { repo: ExampleRepo[] }).repo

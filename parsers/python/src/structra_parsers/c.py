@@ -22,6 +22,11 @@ Resolution rules (see docs/research/import-resolution.md, section 4):
 - The first match wins. Nothing is guessed from a basename.
 - An unresolved `"…"` include is reported on stderr. An unresolved `<…>`
   include is a system or external header and is ignored.
+
+Not modelled yet (Linux is out of scope for v1): Kbuild (`ccflags-y`,
+`LINUXINCLUDE`, `generic-y`), CMake `include_directories`,
+`compile_commands.json`, and `-iquote`/`-isystem` flags. The scan is a regex,
+which section 4.4 of the research allows in place of tree-sitter-c.
 """
 
 import posixpath
@@ -34,7 +39,7 @@ from .scope import tracked_files
 
 # String and character literals are matched so that comment markers inside them
 # are kept; comments are blanked, keeping their newlines.
-_LEXEMES = re.compile(r'"(?:\\.|[^"\\\n])*"|\'(?:\\.|[^\'\\\n])*\'|/\*.*?\*/|//[^\n]*', re.S)
+_LITERALS_AND_COMMENTS = re.compile(r'"(?:\\.|[^"\\\n])*"|\'(?:\\.|[^\'\\\n])*\'|/\*.*?\*/|//[^\n]*', re.S)
 _INCLUDE = re.compile(r'^[ \t]*#[ \t]*include[ \t]*(?:"([^"\n]+)"|<([^>\n]+)>)', re.M)
 
 _BUILD_FILE = re.compile(r"^(?:[Mm]akefile|GNUmakefile|.+\.mk|.+\.mak|.+\.mak\..+)$")
@@ -46,7 +51,11 @@ def _strip_comments(text: str) -> str:
         lexeme = match[0]
         return lexeme if lexeme[0] in "\"'" else " " + "\n" * lexeme.count("\n")
 
-    return _LEXEMES.sub(blank, text)
+    return _LITERALS_AND_COMMENTS.sub(blank, text)
+
+
+def _read_text(repo: Path, path: str) -> str:
+    return (repo / path).read_bytes().decode("utf-8", errors="replace")
 
 
 def _join(directory: str, name: str) -> str | None:
@@ -69,7 +78,7 @@ class _SearchPaths:
         for build_file in sorted(f for f in tracked if _BUILD_FILE.match(posixpath.basename(f))):
             directory = posixpath.dirname(build_file)
             try:
-                text = (repo / build_file).read_bytes().decode("utf-8", errors="replace")
+                text = _read_text(repo, build_file)
             except OSError:
                 continue
             for line in text.splitlines():
@@ -92,7 +101,7 @@ def resolve(repo: Path, files: list[str], diagnostics: Diagnostics) -> list[tupl
     edges = []
     for file in files:
         try:
-            text = (repo / file).read_bytes().decode("utf-8", errors="replace")
+            text = _read_text(repo, file)
         except OSError as e:
             diagnostics.parse_failed(file, f"{type(e).__name__}: {e}")
             continue

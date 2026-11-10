@@ -4,6 +4,8 @@ import subprocess
 import tomllib
 from pathlib import Path
 
+import pytest
+
 from test_fixtures import FIXTURES, build_checkout
 
 CLI = "structra-parse-python"
@@ -26,22 +28,16 @@ def test_path_defaults_to_the_current_directory(tmp_path: Path) -> None:
     assert result.stdout == (FIXTURES / "packages" / "expected.graph.json").read_bytes()
 
 
-def test_help_describes_the_contract() -> None:
-    result = subprocess.run([CLI, "--help"], capture_output=True, text=True)
+@pytest.mark.parametrize("cli", ["structra-parse-python", "structra-parse-c"])
+def test_help_describes_the_contract(cli: str) -> None:
+    result = subprocess.run([cli, "--help"], capture_output=True, text=True)
     assert result.returncode == 0
-    assert result.stdout.startswith("usage: structra-parse-python [-h] [-o FILE] [--exclude GLOB]")
+    assert result.stdout.startswith(f"usage: {cli} [-h] [-o FILE] [--exclude GLOB]")
     assert "[PATH]" in result.stdout
 
 
-def test_version_prints_name_and_version() -> None:
-    result = subprocess.run([CLI, "--version"], capture_output=True, text=True)
+@pytest.mark.parametrize("cli", ["structra-parse-python", "structra-parse-c"])
+def test_version_prints_name_and_version(cli: str) -> None:
+    result = subprocess.run([cli, "--version"], capture_output=True, text=True)
     assert result.returncode == 0
-    assert result.stdout == "structra-parse-python 0.1.0\n"
-
-
-def test_c_parser_shares_the_contract() -> None:
-    result = subprocess.run(["structra-parse-c", "--help"], capture_output=True, text=True)
-    assert result.returncode == 0
-    assert result.stdout.startswith("usage: structra-parse-c [-h] [-o FILE] [--exclude GLOB]")
-    version = subprocess.run(["structra-parse-c", "--version"], capture_output=True, text=True)
-    assert version.stdout == "structra-parse-c 0.1.0\n"
+    assert result.stdout == f"{cli} 0.1.0\n"
