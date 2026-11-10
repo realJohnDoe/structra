@@ -56,7 +56,7 @@ CI ([`.github/workflows/e2e.yml`](.github/workflows/e2e.yml)) runs only the jobs
 - **Conformance fixtures.** Each Parser toolchain's fixtures (tiny repos with expected Graph Files and the CLI contract) and, for Python, the grimp oracle.
 - **Dendrograms and snapshots, byte-identical.** A clone-free Node job rebuilds every dendrogram artifact and 101-step λ snapshot (group count, Total Cost and tree hash per step) from the committed Graph Files and compares them byte for byte, then runs the unit tests. The unit tests also check that `docs/images/toy-diagram.svg` is what `npm run readme:diagram` writes.
 - **Chromium vs Node.** The Playwright job checks that the trees the browser reads off flask's artifact, and the artifact it computes from flask's Graph File, both match Node's 101-step snapshot ([`e2e/cross-engine.spec.ts`](e2e/cross-engine.spec.ts)). It also runs the app's behaviour tests.
-- **`e2e-ok`** always runs and fails if any selected job failed. It is the required check on `main` and gates the GitHub Pages deploy.
+- **`e2e-ok`** always runs and fails if any selected job failed. It is the required check on `main` and gates the GitHub Pages deploy. It is the only required check: the other jobs are skipped when a change doesn't touch their paths, so requiring any of them directly would block docs-only PRs.
 
 ## Docs and planning
 
