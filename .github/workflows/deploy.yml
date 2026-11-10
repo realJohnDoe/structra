@@ -24,8 +24,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      # `vite build` only: `npm run build` runs tsc first, which fails on the legacy linter code (slated for removal).
-      - run: npx vite build
+      - run: npm run build
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
