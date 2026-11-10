@@ -7,6 +7,16 @@ test('the first visit shows flask at λ 0.45, rooted at "All 83 files"', async (
   await expect(page.getByTestId('icicle').getByRole('button').first()).toHaveText('All 83 files')
 })
 
+test('the repo menu lists the Example Repos in Example Repo List order', async ({ page }) => {
+  await page.goto('./')
+  await expect(page.getByRole('combobox', { name: 'Example Repo' }).getByRole('option')).toHaveText([
+    'flask',
+    'requests',
+    'numpy',
+    'django',
+  ])
+})
+
 test('dragging the λ slider changes the summary', async ({ page }) => {
   await page.goto('./')
   const summary = page.getByTestId('summary')
