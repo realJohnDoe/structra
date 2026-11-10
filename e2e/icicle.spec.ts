@@ -14,6 +14,9 @@ test('the repo menu lists the Example Repos in Example Repo List order', async (
     'requests',
     'numpy',
     'django',
+    'express',
+    'vite',
+    'react',
   ])
 })
 
