@@ -73,3 +73,9 @@ export default defineConfig([
   },
 ])
 ```
+
+## License
+
+Structra is licensed under [MIT](LICENSE). The Example Repo Graph Files and
+dendrograms in `examples/` are derived from third-party repositories and keep
+their upstream licenses; see [`examples/NOTICE.md`](examples/NOTICE.md).
