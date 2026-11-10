@@ -8,10 +8,11 @@
  * packages that dependency-cruiser couldn't resolve.
  */
 import { posix } from 'node:path'
+import { EXTENSIONS } from './scope.ts'
 import type { WorkspacePackage } from './workspaces.ts'
 
 const BUILD_DIRS = new Set(['dist', 'lib', 'build', 'out', 'esm', 'cjs', 'es'])
-const SOURCE_EXTENSIONS = ['.ts', '.tsx', '.mts', '.cts', '.js', '.jsx', '.mjs', '.cjs', '.d.ts', '.d.mts', '.d.cts']
+const SOURCE_EXTENSIONS = [...EXTENSIONS, '.d.ts', '.d.mts', '.d.cts']
 const STRIP_EXTENSION = /(?:\.d)?\.(?:[cm]?ts|tsx|[cm]?js|jsx)$/
 
 /** Splits `@scope/name/sub/path` into the package name and `./sub/path` (or `.`). */

@@ -11,7 +11,7 @@ import { readFileSync, realpathSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { parseArgs } from 'node:util'
 import { Diagnostics } from './diagnostics.ts'
-import { serializeGraphFile, type Meta } from './graphFile.ts'
+import { compareCodepoints, serializeGraphFile, type Meta } from './graphFile.ts'
 import { resolveEdges } from './resolve.ts'
 import { inScopeFiles, trackedFiles } from './scope.ts'
 
@@ -131,12 +131,12 @@ function report(diagnostics: Diagnostics): void {
   for (const warning of diagnostics.warnings) say(`${PARSER}: warning: ${warning}`)
   if (diagnostics.parseFailures.length) {
     say(`${PARSER}: ${diagnostics.parseFailures.length} files failed to parse (kept as nodes without edges):`)
-    for (const failure of [...diagnostics.parseFailures].sort()) say(`  ${failure}`)
+    for (const failure of [...diagnostics.parseFailures].sort(compareCodepoints)) say(`  ${failure}`)
   }
   if (diagnostics.unresolved.size) {
     const total = [...diagnostics.unresolved.values()].reduce((a, b) => a + b, 0)
     say(`${PARSER}: ${total} unresolved internal-looking imports:`)
-    for (const name of [...diagnostics.unresolved.keys()].sort()) say(`  ${name} (${diagnostics.unresolved.get(name)})`)
+    for (const name of [...diagnostics.unresolved.keys()].sort(compareCodepoints)) say(`  ${name} (${diagnostics.unresolved.get(name)})`)
   }
 }
 

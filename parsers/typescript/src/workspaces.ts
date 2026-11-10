@@ -11,7 +11,7 @@ import { dirname, join, posix } from 'node:path'
 import type { Diagnostics } from './diagnostics.ts'
 import { compareCodepoints } from './graphFile.ts'
 
-/** A workspace package: its `name` and its repo-relative directory. */
+/** A workspace package: its `name`, its repo-relative directory and its package.json. */
 export interface WorkspacePackage {
   name: string
   dir: string
@@ -39,7 +39,7 @@ function readJson(path: string): PackageJson | undefined {
   }
 }
 
-const strings = (value: unknown): string[] =>
+const stringItems = (value: unknown): string[] =>
   Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : []
 
 /** The `packages:` list of a pnpm-workspace.yaml, read line by line. */
@@ -89,9 +89,9 @@ export function workspacePackages(repo: string, tracked: readonly string[], diag
   const patterns: string[] = []
   if (trackedSet.has('package.json')) {
     const workspaces = readJson(join(repo, 'package.json'))?.workspaces
-    patterns.push(...strings(workspaces))
+    patterns.push(...stringItems(workspaces))
     if (workspaces && typeof workspaces === 'object' && !Array.isArray(workspaces)) {
-      patterns.push(...strings((workspaces as { packages?: unknown }).packages))
+      patterns.push(...stringItems((workspaces as { packages?: unknown }).packages))
     }
   }
   if (trackedSet.has('pnpm-workspace.yaml')) {

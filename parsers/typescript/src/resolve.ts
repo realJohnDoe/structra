@@ -31,7 +31,7 @@ import { linkWorkspaces, workspacePackages, type WorkspacePackage } from './work
 
 const CONDITIONS = ['import', 'require', 'node', 'module', 'development', 'default']
 
-/** The repo-relative path of each file's nearest tracked tsconfig.json ('' for none). */
+/** `files` grouped by their nearest tracked tsconfig.json (repo-relative; '' for none). */
 function groupByTsconfig(files: readonly string[], tracked: readonly string[]): Map<string, string[]> {
   const configDirs = new Set(tracked.filter((p) => posix.basename(p) === 'tsconfig.json').map((p) => posix.dirname(p)))
   const groups = new Map<string, string[]>()
@@ -75,14 +75,15 @@ function readTsconfig(repo: string, config: string, diagnostics: Diagnostics): t
 
 const FAILED_FILE = /\.\.\. in (.+)\n*$/
 
-type Parser = 'tsc' | 'acorn'
+/** The syntax parser dependency-cruiser extracts imports with. */
+type SyntaxParser = 'tsc' | 'acorn'
 
 /**
  * Cruises `files` with `parser`. Returns the result and the files
  * dependency-cruiser failed to extract from, with the reason: they are left
  * out of the result.
  */
-async function cruiseGroup(repo: string, files: string[], parser: Parser, config: string, tsConfig: object | undefined, modules: string): Promise<{ result: ICruiseResult; failed: Map<string, string> }> {
+async function cruiseGroup(repo: string, files: string[], parser: SyntaxParser, config: string, tsConfig: object | undefined, modules: string): Promise<{ result: ICruiseResult; failed: Map<string, string> }> {
   let remaining = files
   const failed = new Map<string, string>()
   for (;;) {
@@ -145,7 +146,7 @@ export async function resolveEdges(repo: string, files: readonly string[], track
   console.log = console.error
   try {
     const edges: [string, string][] = []
-    const target = (dependency: IDependency): string | undefined => {
+    const inScopeTarget = (dependency: IDependency): string | undefined => {
       if (dependency.coreModule) return undefined
       if (!dependency.couldNotResolve && inScope.has(dependency.resolved)) return dependency.resolved
       const { name, subpath } = splitSpecifier(dependency.module)
@@ -156,16 +157,16 @@ export async function resolveEdges(repo: string, files: readonly string[], track
     for (const config of [...groups.keys()].sort(compareCodepoints)) {
       const group = groups.get(config)!
       const tsConfig = readTsconfig(repo, config, diagnostics)
-      const first = await cruiseGroup(repo, group, 'tsc', config, tsConfig, linked.modules)
+      const tscPass = await cruiseGroup(repo, group, 'tsc', config, tsConfig, linked.modules)
       // The TypeScript parser trips on some Flow syntax (`import typeof`);
       // acorn, with its loose fallback, gets the imports of most such files.
-      const second = await cruiseGroup(repo, [...first.failed.keys()], 'acorn', config, tsConfig, linked.modules)
-      for (const [file, reason] of second.failed) diagnostics.parseFailed(file, reason)
+      const acornPass = await cruiseGroup(repo, [...tscPass.failed.keys()], 'acorn', config, tsConfig, linked.modules)
+      for (const [file, reason] of acornPass.failed) diagnostics.parseFailed(file, reason)
       const members = new Set(group)
-      for (const module of [...first.result.modules, ...second.result.modules]) {
+      for (const module of [...tscPass.result.modules, ...acornPass.result.modules]) {
         if (!members.has(module.source)) continue
         for (const dependency of module.dependencies) {
-          const resolved = target(dependency)
+          const resolved = inScopeTarget(dependency)
           if (resolved) edges.push([module.source, resolved])
           else if (dependency.couldNotResolve && isInternalLooking(dependency.module, packages)) {
             diagnostics.unresolvedImport(dependency.module)

@@ -29,7 +29,7 @@ export function trackedFiles(repo: string, excludes: readonly string[] = []): st
   return files
 }
 
-/** Tracked TS/JS files, minus vendored directories, submodules and `excludes`. */
+/** The TS/JS files among `tracked` (the output of `trackedFiles`). */
 export function inScopeFiles(tracked: readonly string[]): string[] {
   return tracked.filter((path) => EXTENSIONS.has(extname(path)))
 }
