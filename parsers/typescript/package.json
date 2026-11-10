@@ -1,0 +1,27 @@
+{
+  "name": "structra-parse-typescript",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Structra's TS/JS Parser: turns a git checkout into a Graph File.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "structra-parse-typescript": "src/cli.ts"
+  },
+  "engines": {
+    "node": "^22.18 || ^24 || >=26"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "dependency-cruiser": "18.7.2",
+    "typescript": "5.9.3"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.5",
+    "ajv": "8.20.0",
+    "smol-toml": "1.9.1"
+  }
+}

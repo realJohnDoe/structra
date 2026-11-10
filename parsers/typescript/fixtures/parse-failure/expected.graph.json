@@ -1,0 +1,17 @@
+{
+  "meta": {
+    "repo": "https://github.com/example/parse-failure",
+    "commit": "c303191cc5484616f934e8139a8ede95f1f4270d",
+    "language": "typescript",
+    "parser": { "name": "structra-parse-typescript" }
+  },
+  "nodes": [
+    "broken.js",
+    "flow.js",
+    "good.js"
+  ],
+  "edges": [
+    ["flow.js", "good.js"],
+    ["good.js", "flow.js"]
+  ]
+}

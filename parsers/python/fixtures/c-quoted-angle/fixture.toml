@@ -1,0 +1,46 @@
+# Quoted includes search the includer's directory first; angle includes don't.
+# Every #if branch counts, and line continuations are followed.
+# Unresolved angle includes are system headers and are ignored; unresolved
+# quoted ones are reported. Includes in comments and #include_next don't
+# count; macro includes are reported as unresolved. Only .c and .h files are
+# nodes.
+parser = "structra-parse-c"
+origin = "https://github.com/example/c-quoted-angle"
+stderr = [
+  "3 unresolved internal-looking imports",
+  "  ../../outside.h (1)",
+  "  CONFIG_H (1)",
+  "  missing.h (1)",
+]
+
+[files]
+"top.h" = ""
+"src/main.c" = """
+#include <stdio.h>
+#include "util.h"
+#  include "lib/helper.h"
+#include <sibling.h>
+#include "missing.h"
+#include "../../outside.h"
+/* #include "commented.h"
+   #include "commented.h" */
+// #include "commented.h"
+#include "../top.h" /* a trailing comment */
+#include "./util.h"
+#define NAME "/* not a comment */"
+#include CONFIG_H
+#include_next <util.h>
+#if 0
+#include "inactive.h"
+#endif
+#include \\
+  "continued.h"
+char quote = '\\'';  /* #include "commented.h" */
+"""
+"src/inactive.h" = ""
+"src/continued.h" = ""
+"src/util.h" = ""
+"src/sibling.h" = ""
+"src/commented.h" = ""
+"src/lib/helper.h" = "#include \"../util.h\"\n"
+"src/notes.cpp" = "#include \"util.h\"\n"

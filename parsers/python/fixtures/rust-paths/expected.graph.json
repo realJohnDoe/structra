@@ -1,0 +1,33 @@
+{
+  "meta": {
+    "repo": "https://github.com/example/rust-paths",
+    "commit": "f383b71fb6ced6e9aed7c3ff16c5a629cb70dc43",
+    "language": "rust",
+    "parser": { "name": "structra-parse-rust" }
+  },
+  "nodes": [
+    "src/lib.rs",
+    "src/net/mod.rs",
+    "src/net/tcp.rs",
+    "src/net/udp.rs",
+    "src/runtime.rs",
+    "src/util/bytes.rs",
+    "src/util/mod.rs"
+  ],
+  "edges": [
+    ["src/lib.rs", "src/net/mod.rs"],
+    ["src/lib.rs", "src/net/tcp.rs"],
+    ["src/lib.rs", "src/runtime.rs"],
+    ["src/lib.rs", "src/util/mod.rs"],
+    ["src/net/mod.rs", "src/net/tcp.rs"],
+    ["src/net/mod.rs", "src/net/udp.rs"],
+    ["src/net/tcp.rs", "src/net/mod.rs"],
+    ["src/net/tcp.rs", "src/runtime.rs"],
+    ["src/net/tcp.rs", "src/util/bytes.rs"],
+    ["src/net/tcp.rs", "src/util/mod.rs"],
+    ["src/net/udp.rs", "src/net/tcp.rs"],
+    ["src/net/udp.rs", "src/util/bytes.rs"],
+    ["src/util/bytes.rs", "src/net/tcp.rs"],
+    ["src/util/mod.rs", "src/util/bytes.rs"]
+  ]
+}

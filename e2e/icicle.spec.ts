@@ -14,6 +14,13 @@ test('the repo menu lists the Example Repos as owner/name, in Example Repo List 
     'psf/requests',
     'numpy/numpy',
     'django/django',
+    'expressjs/express',
+    'vitejs/vite',
+    'facebook/react',
+    'BurntSushi/ripgrep',
+    'tokio-rs/tokio',
+    'redis/redis',
+    'git/git',
   ])
 })
 

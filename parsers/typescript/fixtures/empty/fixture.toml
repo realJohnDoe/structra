@@ -1,0 +1,7 @@
+# A repository without TS/JS files gives an empty graph.
+origin = "https://github.com/example/empty"
+
+[files]
+"README.md" = "no TypeScript here\n"
+"tool.py" = "import os\n"
+"styles/site.css" = "body {}\n"

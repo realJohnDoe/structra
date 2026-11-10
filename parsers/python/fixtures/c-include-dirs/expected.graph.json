@@ -1,0 +1,32 @@
+{
+  "meta": {
+    "repo": "https://github.com/example/c-include-dirs",
+    "commit": "95504227b442f791b8175f37851d1a91eb28db2f",
+    "language": "c",
+    "parser": { "name": "structra-parse-c" }
+  },
+  "nodes": [
+    "app/main.c",
+    "config.h",
+    "doc/doc.h",
+    "engine/include/engine.h",
+    "engine/src/core.c",
+    "gen/gen.h",
+    "include/top.h",
+    "lib/api/api.h",
+    "lib/api/defs.h",
+    "tools/local/defs.h",
+    "tools/local/x.h",
+    "tools/sub/t.c"
+  ],
+  "edges": [
+    ["app/main.c", "config.h"],
+    ["app/main.c", "include/top.h"],
+    ["app/main.c", "lib/api/api.h"],
+    ["app/main.c", "lib/api/defs.h"],
+    ["engine/src/core.c", "engine/include/engine.h"],
+    ["tools/sub/t.c", "config.h"],
+    ["tools/sub/t.c", "tools/local/defs.h"],
+    ["tools/sub/t.c", "tools/local/x.h"]
+  ]
+}

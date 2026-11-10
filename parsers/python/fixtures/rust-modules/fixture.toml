@@ -1,0 +1,26 @@
+# Nested modules: `mod x;` loads x.rs or x/mod.rs from the declaring module's
+# directory. That is the file's own directory for a crate root or a mod.rs,
+# and x's directory for a non-mod-rs file x.rs. An inline `mod m { ... }` adds
+# m/ to the directory. Each `mod` declaration is an edge from the declaring
+# file to the loaded one.
+parser = "structra-parse-rust"
+origin = "https://github.com/example/rust-modules"
+
+[files]
+"Cargo.toml" = """
+[package]
+name = "demo"
+edition = "2021"
+"""
+"src/lib.rs" = """
+mod a;
+pub(crate) mod c;
+mod inline {
+    mod deep;
+}
+"""
+"src/a.rs" = "mod b;\n"
+"src/a/b.rs" = ""
+"src/c/mod.rs" = "mod d;\n"
+"src/c/d.rs" = ""
+"src/inline/deep.rs" = ""
