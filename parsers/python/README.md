@@ -15,7 +15,7 @@ uv run pytest                              # conformance fixtures and the grimp 
 - `src/structra_parsers/scope.py`: which tracked files are In-scope Files.
 - `src/structra_parsers/graph_file.py`: the Python Graph File writer.
 - `src/structra_parsers/python.py`: Python import resolution with a stdlib-`ast` scanner. Its docstring states the resolution rules.
-- `src/structra_parsers/c.py`: C `#include` resolution with a regex scan and search paths from `-I` flags in Makefiles. Its docstring states the resolution rules.
+- `src/structra_parsers/c.py`: C `#include` resolution with a tree-sitter-c scan and search paths from `-I` flags in Makefiles. Its docstring states the resolution rules.
 
 ## Conformance fixtures
 
@@ -29,4 +29,4 @@ Fixtures for other Parsers name their CLI with `parser` (the C fixtures are `c-*
 
 Python resolution doesn't see dynamic imports (`importlib.import_module`, `__import__`). Source roots are each project's directory and its `src/`, where a project is the repository root or a directory with a `pyproject.toml`, `setup.py` or `setup.cfg` (nearest project first).
 
-C resolution doesn't evaluate the build: `#if` branches and conditional `-I` flags all count, `-I` flags that use variables are skipped, and headers generated at build time stay unresolved.
+C resolution doesn't evaluate the build: `#if` branches and conditional `-I` flags all count, `-I` flags that use variables are skipped, and headers generated at build time stay unresolved. tree-sitter and tree-sitter-c are pinned exactly in `pyproject.toml`: a grammar bump can change the Graph Files, so it regenerates the C Example Repos in the same PR.

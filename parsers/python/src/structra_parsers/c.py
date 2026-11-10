@@ -1,10 +1,11 @@
-"""structra-parse-c: C `#include`s, resolved with a scan and search paths.
+"""structra-parse-c: C `#include`s, parsed with tree-sitter-c and resolved
+with search paths.
 
 Resolution rules (see docs/research/import-resolution.md, section 4):
 
 - Every `#include "…"` and `#include <…>` counts, in every `#if` branch.
-  Includes inside comments don't. Macro includes (`#include NAME`) and
-  `#include_next` are skipped.
+  Includes inside comments and `#include_next` don't. Files that don't parse
+  cleanly (macro-heavy C) still give the includes tree-sitter recovers.
 - Headers are looked up among the In-scope Files only, by exact path, so
   results don't depend on the filesystem's case sensitivity. A path that
   leaves the repository finds nothing.
@@ -20,13 +21,16 @@ Resolution rules (see docs/research/import-resolution.md, section 4):
 - Headers use the search path of their own directory, since they have no
   compile flags of their own.
 - The first match wins. Nothing is guessed from a basename.
-- An unresolved `"…"` include is reported on stderr. An unresolved `<…>`
-  include is a system or external header and is ignored.
+- An unresolved `"…"` include is reported on stderr, and so is a macro
+  include (`#include NAME`), by its macro. An unresolved `<…>` include is a
+  system or external header and is ignored.
 
 Not modelled yet (Linux is out of scope for v1): Kbuild (`ccflags-y`,
 `LINUXINCLUDE`, `generic-y`), CMake `include_directories`,
-`compile_commands.json`, and `-iquote`/`-isystem` flags. The scan is a regex,
-which section 4.4 of the research allows in place of tree-sitter-c.
+`compile_commands.json`, and `-iquote`/`-isystem` flags.
+
+tree-sitter and tree-sitter-c are pinned exactly: a new grammar can change
+what is parsed, so a bump regenerates the C Example Repos on purpose.
 """
 
 import posixpath
@@ -34,24 +38,34 @@ import re
 import sys
 from pathlib import Path
 
+import tree_sitter_c
+from tree_sitter import Language as Grammar
+from tree_sitter import Parser, Query, QueryCursor
+
 from .cli import Diagnostics, Language, run
 from .scope import tracked_files
 
-# String and character literals are matched so that comment markers inside them
-# are kept; comments are blanked, keeping their newlines.
-_LITERALS_AND_COMMENTS = re.compile(r'"(?:\\.|[^"\\\n])*"|\'(?:\\.|[^\'\\\n])*\'|/\*.*?\*/|//[^\n]*', re.S)
-_INCLUDE = re.compile(r'^[ \t]*#[ \t]*include[ \t]*(?:"([^"\n]+)"|<([^>\n]+)>)', re.M)
+_GRAMMAR = Grammar(tree_sitter_c.language())
+_INCLUDE_PATHS = Query(_GRAMMAR, "(preproc_include path: (_) @path)")
 
 _BUILD_FILE = re.compile(r"^(?:[Mm]akefile|GNUmakefile|.+\.mk|.+\.mak|.+\.mak\..+)$")
 _FLAG = re.compile(r"""(?:^|(?<=[\s'"=(,]))-I[ \t]*([^\s$(){}'";,\\]+)(?=[\s'";,)]|$)""")
 
 
-def _strip_comments(text: str) -> str:
-    def blank(match: re.Match[str]) -> str:
-        lexeme = match[0]
-        return lexeme if lexeme[0] in "\"'" else " " + "\n" * lexeme.count("\n")
-
-    return _LITERALS_AND_COMMENTS.sub(blank, text)
+def _includes(parser: Parser, source: bytes) -> list[tuple[str, str]]:
+    """(kind, name) of each `#include` in order: kind is `"` for `"name"`, `<`
+    for `<name>`, and `macro` for a macro include, named by its source text."""
+    paths = QueryCursor(_INCLUDE_PATHS).captures(parser.parse(source).root_node).get("path", [])
+    found = []
+    for node in sorted(paths, key=lambda n: n.start_byte):
+        text = (node.text or b"").decode("utf-8", errors="replace")
+        if node.type == "string_literal":
+            found.append(('"', text[1:-1]))
+        elif node.type == "system_lib_string":
+            found.append(("<", text[1:-1]))
+        else:
+            found.append(("macro", text))
+    return found
 
 
 def _read_text(repo: Path, path: str) -> str:
@@ -98,22 +112,25 @@ class _SearchPaths:
 def resolve(repo: Path, files: list[str], diagnostics: Diagnostics) -> list[tuple[str, str]]:
     known = set(files)
     search = _SearchPaths(repo, tracked_files(repo))
+    parser = Parser(_GRAMMAR)
     edges = []
     for file in files:
         try:
-            text = _read_text(repo, file)
+            source = (repo / file).read_bytes()
         except OSError as e:
             diagnostics.parse_failed(file, f"{type(e).__name__}: {e}")
             continue
         directory = posixpath.dirname(file)
-        for quoted, angled in _INCLUDE.findall(_strip_comments(text)):
-            name = quoted or angled
-            places = ([directory] if quoted else []) + search.of(directory)
+        for kind, name in _includes(parser, source):
+            if kind == "macro":
+                diagnostics.unresolved_import(name)
+                continue
+            places = ([directory] if kind == '"' else []) + search.of(directory)
             candidates = (_join(place, name) for place in places)
             target = next((c for c in candidates if c in known), None)
             if target:
                 edges.append((file, target))
-            elif quoted:
+            elif kind == '"':
                 diagnostics.unresolved_import(name)
     return edges
 

@@ -4,7 +4,10 @@ version = "0.1.0"
 description = "Structra Parsers: turn a git checkout into a Graph File."
 requires-python = "==3.13.*"
 license = "MIT"
-dependencies = []
+dependencies = [
+    "tree-sitter==0.26.1",
+    "tree-sitter-c==0.24.2",
+]
 
 [project.scripts]
 structra-parse-python = "structra_parsers.python:main"
