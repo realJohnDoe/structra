@@ -7,7 +7,8 @@ import {
   RepoExplorerInfoPanel,
 } from "./repo-explorer";
 import type { TreeNode, Edge, SubtreeData } from "./repo-explorer/types";
-import { COLORS, PRESETS, PRESET_GROUPS } from "./repo-explorer/types";
+import { COLORS } from "./repo-explorer/types";
+import { PRESETS, PRESET_GROUPS } from "./repo-explorer/examples";
 
 // Utility functions
 function parseDot(src: string): { nodes: string[]; edges: Edge[] } {
@@ -180,7 +181,7 @@ export const RepoExplorer: React.FC = () => {
     (presetKey: string) => {
       const preset = PRESETS[presetKey];
       if (preset) {
-        load(preset.data, preset.name);
+        void preset.load().then((data) => load(data, preset.name));
       }
     },
     [load],
@@ -214,7 +215,7 @@ export const RepoExplorer: React.FC = () => {
 
   // Load default preset
   useEffect(() => {
-    handlePresetClick("numpy");
+    handlePresetClick("flask");
   }, [handlePresetClick]);
 
   const stats = useMemo(() => {
