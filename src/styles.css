@@ -176,12 +176,106 @@ select {
   height: 40px;
 }
 
+.import-lines {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 2;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.import-lines path {
+  fill: none;
+  stroke-width: 1;
+  stroke-linecap: round;
+}
+
+.explain,
 .details {
   margin: 12px 0;
-  padding: 12px;
-  border: 1px dashed var(--line);
-  border-radius: 8px;
   color: var(--dim);
+  line-height: 1.5;
+}
+
+.details {
+  color: var(--text);
+}
+
+.details h2 {
+  margin: 0;
+  font-size: 14px;
+  color: var(--accent);
+  overflow-wrap: anywhere;
+}
+
+.details h3 {
+  margin: 8px 0 2px;
+  font-size: 11px;
+  font-weight: 400;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+
+.details p {
+  margin: 4px 0;
+}
+
+.dim {
+  color: var(--dim);
+}
+
+.details .path {
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip {
+  padding: 1px 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 11px;
+  background: var(--panel);
+}
+
+.chip.out {
+  color: #c8f060;
+  border-color: #c8f060;
+}
+
+.chip.in {
+  color: #ff9a3c;
+  border-color: #ff9a3c;
+}
+
+.details-list ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.details-list button {
+  display: block;
+  width: 100%;
+  padding: 2px 0;
+  background: none;
+  border: none;
+  text-align: left;
+  color: #cfd8e0;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.details-list .group-name {
+  color: var(--accent);
 }
 
 .balance {

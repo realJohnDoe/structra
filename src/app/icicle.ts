@@ -127,6 +127,8 @@ export interface Block {
   row: number
   left: number
   width: number
+  /** The index in the layout of the block this one is drawn under; null for the top block. */
+  parent: number | null
 }
 
 /**
@@ -179,20 +181,28 @@ export function layoutView(
 ): View {
   const blocks: Block[] = []
 
-  const lay = (item: Item, row: number, left: number, w: number) => {
-    blocks.push({ item, row, left, width: w })
+  const lay = (item: Item, row: number, left: number, w: number, parent: number | null) => {
+    const at = blocks.push({ item, row, left, width: w, parent }) - 1
     if (row + 1 >= ROWS) return
-    if (item.kind === 'group') layChildren(item.node, item.node.children, false, row + 1, left, w)
+    if (item.kind === 'group') layChildren(item.node, item.node.children, false, row + 1, left, w, at)
     // A folder's files are drawn under it when they fit; otherwise they fold into it.
     else if (item.kind === 'folder' && w / item.files >= FILE_MIN)
-      item.folder.files.forEach((f, i) => lay(fileItem(f), row + 1, left + (i * w) / item.files, w / item.files))
+      item.folder.files.forEach((f, i) => lay(fileItem(f), row + 1, left + (i * w) / item.files, w / item.files, at))
   }
 
-  const layChildren = (owner: OptimalGroup, children: TreeNode[], asFolder: boolean, row: number, left: number, w: number) => {
+  const layChildren = (
+    owner: OptimalGroup,
+    children: TreeNode[],
+    asFolder: boolean,
+    row: number,
+    left: number,
+    w: number,
+    parent: number,
+  ) => {
     const per = w / children.reduce((sum, c) => sum + fileCount(c), 0)
     let x = left
     const put = (item: Item) => {
-      lay(item, row, x, item.files * per)
+      lay(item, row, x, item.files * per, parent)
       x += item.files * per
     }
     const files = children.filter((c): c is OptimalFile => !isGroup(c))
@@ -223,15 +233,15 @@ export function layoutView(
 
   const open = resolveOpened(zoom, opened, ctx)
   if (!open) {
-    lay(groupItem(zoom, zoomParent), 0, 0, width)
+    lay(groupItem(zoom, zoomParent), 0, 0, width, null)
     return { kind: 'blocks', blocks }
   }
   const members = membersOf(open)
   const per = width / open.files
   const grid = members.some((m) => (isGroup(m) ? fileCount(m) * per < GROUP_MIN : per < FILE_MIN))
   if (grid) return { kind: 'grid', header: open, tiles: open.kind === 'folder' ? open.folder.files.map(fileItem) : splitMembers(open.owner, open.members, ctx) }
-  blocks.push({ item: open, row: 0, left: 0, width })
-  layChildren(zoom, members, open.kind === 'folder', 1, 0, width)
+  blocks.push({ item: open, row: 0, left: 0, width, parent: null })
+  layChildren(zoom, members, open.kind === 'folder', 1, 0, width, 0)
   return { kind: 'blocks', blocks }
 }
 
@@ -279,4 +289,36 @@ export function pathTo(root: OptimalGroup, id: number): OptimalGroup[] | null {
     if (rest) return [root, ...rest]
   }
   return null
+}
+
+/** The path of groups from the root to the group directly holding file `index`, or null if the tree has no such file. */
+export function pathToFile(root: OptimalGroup, index: number): OptimalGroup[] | null {
+  for (const child of root.children) {
+    if (!isGroup(child)) {
+      if (child.index === index) return [root]
+      continue
+    }
+    const rest = pathToFile(child, index)
+    if (rest) return [root, ...rest]
+  }
+  return null
+}
+
+/** An item of the tree at a node, as the icicle and the details card show it; `path` runs from the root to the node's parent. */
+export const itemOf = (node: TreeNode, path: OptimalGroup[]): Item =>
+  isGroup(node) ? groupItem(node, path[path.length - 1] ?? null) : fileItem(node)
+
+/**
+ * A selected item re-read against another step's tree: a group by its dendrogram
+ * id, a display-only block by its owner and the members still directly in it.
+ * Null when the tree no longer has it.
+ */
+export function resolveItem(root: OptimalGroup, item: Item, ctx: LayoutContext): Item | null {
+  if (item.kind === 'file') return pathToFile(root, item.node.index) && item
+  if (item.kind === 'group') {
+    const path = pathTo(root, item.node.id)
+    return path && groupItem(path[path.length - 1], path[path.length - 2] ?? null)
+  }
+  const path = pathTo(root, item.owner.id)
+  return path && resolveOpened(path[path.length - 1], item, ctx)
 }
