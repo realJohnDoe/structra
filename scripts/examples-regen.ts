@@ -12,6 +12,7 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { parse } from 'smol-toml'
+import { parsers } from './example-parsers.ts'
 
 interface ExampleRepo {
   name: string
@@ -23,16 +24,6 @@ interface ExampleRepo {
 
 const root = join(import.meta.dirname, '..')
 const examples = join(root, 'examples')
-
-// The command that runs each language's Parser, from the repository root.
-const uvParser = (cli: string) => ['uv', 'run', '--project', 'parsers/python', '--frozen', '--quiet', cli]
-const parsers: Record<string, string[]> = {
-  python: uvParser('structra-parse-python'),
-  rust: uvParser('structra-parse-rust'),
-  c: uvParser('structra-parse-c'),
-  // Needs `npm ci --prefix parsers/typescript` first.
-  typescript: ['node', 'parsers/typescript/src/cli.ts'],
-}
 
 const list = (parse(readFileSync(join(examples, 'repos.toml'), 'utf8')) as unknown as { repo: ExampleRepo[] }).repo
 const names = process.argv.slice(2)
@@ -58,7 +49,7 @@ for (const repo of repos) {
     console.error(`${repo.name}: cloning ${repo.url} at ${repo.commit}`)
     run(['bash', join(root, 'scripts', 'clone-at-pin.sh'), repo.url, repo.commit, checkout])
     console.error(`${repo.name}: parsing`)
-    run([...parsers[repo.language], checkout, '-o', graphFile, ...repo.exclude.flatMap((glob) => ['--exclude', glob])])
+    run([...parsers[repo.language].command, checkout, '-o', graphFile, ...repo.exclude.flatMap((glob) => ['--exclude', glob])])
     const written = JSON.parse(readFileSync(graphFile, 'utf8')).meta.repo
     if (written !== repo.url) throw new Error(`${repo.name}: the Graph File names ${written}, the list ${repo.url}`)
     run(['node', join(root, 'scripts', 'structra-dendrogram.ts'), graphFile])
