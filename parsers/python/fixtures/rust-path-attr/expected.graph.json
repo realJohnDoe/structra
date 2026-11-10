@@ -1,0 +1,27 @@
+{
+  "meta": {
+    "repo": "https://github.com/example/rust-path-attr",
+    "commit": "c85f7bb6046bf193f92b2260b704dca5a49fffcd",
+    "language": "rust",
+    "parser": { "name": "structra-parse-rust" }
+  },
+  "nodes": [
+    "src/lib.rs",
+    "src/loose/x.rs",
+    "src/other/inner.rs",
+    "src/other/plain.rs",
+    "src/sync.rs",
+    "src/sys/helper.rs",
+    "src/sys/unix.rs",
+    "src/sys/windows.rs"
+  ],
+  "edges": [
+    ["src/lib.rs", "src/other/inner.rs"],
+    ["src/lib.rs", "src/other/plain.rs"],
+    ["src/lib.rs", "src/sync.rs"],
+    ["src/lib.rs", "src/sys/unix.rs"],
+    ["src/lib.rs", "src/sys/windows.rs"],
+    ["src/sync.rs", "src/loose/x.rs"],
+    ["src/sys/unix.rs", "src/sys/helper.rs"]
+  ]
+}

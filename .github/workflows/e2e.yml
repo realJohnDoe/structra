@@ -81,7 +81,8 @@ jobs:
           path: ${{ runner.temp }}/examples-check-out
           if-no-files-found: ignore
 
-  # Each toolchain's conformance fixtures.
+  # The conformance fixtures of the Python-hosted Parsers (Python and Rust) and
+  # the grimp oracle.
   fixtures-python:
     needs: changes
     if: contains(fromJSON(needs.changes.outputs.selection).fixtures, 'uv')
@@ -93,6 +94,8 @@ jobs:
         with:
           enable-cache: true
           cache-dependency-glob: parsers/python/uv.lock
+      # The runner has cargo, so the Rust fixtures run with and without it.
+      - run: cargo --version
       - run: uv run --project parsers/python --frozen pytest
 
   fixtures-typescript:

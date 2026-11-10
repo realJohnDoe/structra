@@ -1,0 +1,71 @@
+# `use` trees and paths in code: `crate`, `self`, `super` and child-module
+# (uniform) paths link to the file of their longest module prefix. Inline
+# modules share their file. Standard-library and external paths, enum
+# variants and associated items are ignored. A `super` beyond the crate root
+# is reported.
+parser = "structra-parse-rust"
+origin = "https://github.com/example/rust-paths"
+stderr = [
+  "1 unresolved internal-looking imports",
+  "  src/net/tcp.rs: super::super::super::Gone (1)",
+]
+
+[files]
+"Cargo.toml" = """
+[package]
+name = "demo"
+edition = "2021"
+"""
+"src/lib.rs" = """
+pub mod net;
+pub mod util;
+mod runtime;
+
+use std::collections::HashMap;
+pub use net::{self, tcp::TcpStream as Stream};
+"""
+"src/net/mod.rs" = """
+pub mod tcp;
+pub mod udp;
+
+pub(crate) mod addr {
+    pub struct Addr;
+}
+"""
+"src/net/tcp.rs" = """
+use super::addr::Addr;
+use crate::util::{bytes::*, Buf};
+use super::super::super::Gone;
+
+pub struct TcpStream;
+
+impl TcpStream {
+    fn read(&self) -> Option<crate::runtime::Handle> {
+        let kind = Kind::Read;
+        let len = Vec::<u8>::new();
+        crate::runtime::spawn();
+        None
+    }
+}
+"""
+"src/net/udp.rs" = """
+fn f(x: self::Local) -> super::tcp::TcpStream {
+    let _ = <super::tcp::TcpStream as Default>::default();
+    todo!("{}", crate::util::bytes::LEN)
+}
+"""
+"src/util/mod.rs" = """
+pub mod bytes;
+pub struct Buf;
+"""
+"src/util/bytes.rs" = """
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::net::tcp;
+}
+"""
+"src/runtime.rs" = """
+pub struct Handle;
+pub fn spawn() {}
+"""

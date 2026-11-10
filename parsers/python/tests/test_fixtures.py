@@ -19,6 +19,7 @@ fixture.toml keys (all optional):
 
 import json
 import os
+import shutil
 import subprocess
 import tomllib
 from pathlib import Path
@@ -69,9 +70,9 @@ def build_checkout(spec: dict, repo: Path) -> None:
         (repo / path).write_text(content, encoding="utf-8")
 
 
-def run_parser(spec: dict, repo: Path, *extra: str) -> subprocess.CompletedProcess[bytes]:
-    cli = spec.get("parser", "structra-parse-python")
-    return subprocess.run([cli, str(repo), *spec.get("args", []), *extra], capture_output=True)
+def run_parser(spec: dict, repo: Path, *extra: str, env: dict | None = None) -> subprocess.CompletedProcess[bytes]:
+    cli = shutil.which(spec.get("parser", "structra-parse-python")) or spec.get("parser", "structra-parse-python")
+    return subprocess.run([cli, str(repo), *spec.get("args", []), *extra], capture_output=True, env=env)
 
 
 def check_graph_file(text: str) -> None:
@@ -108,3 +109,24 @@ def test_fixture(name: str, tmp_path: Path) -> None:
     assert result.stdout.decode() == expected.decode()
     check_graph_file(result.stdout.decode())
     assert json.loads(result.stdout)["meta"]["commit"] == git(repo, "rev-parse", "HEAD").strip()
+
+
+RUST_FIXTURES = [
+    name
+    for name in FIXTURE_NAMES
+    if tomllib.loads((FIXTURES / name / "fixture.toml").read_text(encoding="utf-8")).get("parser")
+    == "structra-parse-rust"
+]
+
+
+@pytest.mark.skipif(shutil.which("cargo") is None, reason="cargo isn't installed, so every run is already without it")
+@pytest.mark.parametrize("name", RUST_FIXTURES)
+def test_rust_fixture_without_cargo(name: str, tmp_path: Path) -> None:
+    """Crates read from Cargo.toml give the same Graph File as `cargo metadata`."""
+    spec = tomllib.loads((FIXTURES / name / "fixture.toml").read_text(encoding="utf-8"))
+    repo = tmp_path / "repo"
+    build_checkout(spec, repo)
+    path = os.pathsep.join(d for d in os.environ["PATH"].split(os.pathsep) if not (Path(d) / "cargo").exists())
+    result = run_parser(spec, repo, env={**os.environ, "PATH": path})
+    assert result.returncode == 0, result.stderr.decode()
+    assert result.stdout == (FIXTURES / name / "expected.graph.json").read_bytes()

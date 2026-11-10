@@ -56,18 +56,18 @@ export function changedEntries(base: ExampleRepo[], head: ExampleRepo[]): Set<st
 
 /**
  * `changed` is the list of changed files, or null for "everything" (manual run).
- * A toolchain change selects the first Example Repo of that language, as its canary.
+ * A change to a Parser's directory selects the first Example Repo of each language it hosts, as its canary.
  */
 export function select(list: ExampleRepo[], changed: string[] | null, entries: Set<string>): Selection {
   const parsed = list.filter((repo) => parsers[repo.language])
   const everything = changed === null || changed.some((file) => shared.some((re) => re.test(file)))
   const picked = new Set<string>()
   const fixtures = new Set<string>()
-  for (const [language, { toolchain }] of Object.entries(parsers)) {
-    if (everything || changed.some((file) => file.startsWith(`parsers/${language}/`) || file.startsWith('schema/'))) {
+  for (const [language, { toolchain, dir }] of Object.entries(parsers)) {
+    if (everything || changed.some((file) => file.startsWith(`${dir}/`) || file.startsWith('schema/'))) {
       fixtures.add(toolchain)
     }
-    if (changed?.some((file) => file.startsWith(`parsers/${language}/`))) {
+    if (changed?.some((file) => file.startsWith(`${dir}/`))) {
       const canary = parsed.find((repo) => repo.language === language)
       if (canary) picked.add(canary.name)
     }

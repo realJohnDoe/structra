@@ -1,0 +1,23 @@
+{
+  "meta": {
+    "repo": "https://github.com/example/rust-modules",
+    "commit": "c3dd247f3636b9d0eee049ef7de416e13dac657b",
+    "language": "rust",
+    "parser": { "name": "structra-parse-rust" }
+  },
+  "nodes": [
+    "src/a.rs",
+    "src/a/b.rs",
+    "src/c/d.rs",
+    "src/c/mod.rs",
+    "src/inline/deep.rs",
+    "src/lib.rs"
+  ],
+  "edges": [
+    ["src/a.rs", "src/a/b.rs"],
+    ["src/c/mod.rs", "src/c/d.rs"],
+    ["src/lib.rs", "src/a.rs"],
+    ["src/lib.rs", "src/c/mod.rs"],
+    ["src/lib.rs", "src/inline/deep.rs"]
+  ]
+}

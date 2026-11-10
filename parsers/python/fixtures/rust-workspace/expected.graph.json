@@ -1,0 +1,47 @@
+{
+  "meta": {
+    "repo": "https://github.com/example/rust-workspace",
+    "commit": "29f03279a2173ddcdd6fc0b6dd75a9dde0b07568",
+    "language": "rust",
+    "parser": { "name": "structra-parse-rust" }
+  },
+  "nodes": [
+    "crates/cli/build.rs",
+    "crates/cli/src/args.rs",
+    "crates/cli/src/bin/extra/helper.rs",
+    "crates/cli/src/bin/extra/main.rs",
+    "crates/cli/src/main.rs",
+    "crates/cli/src/tool.rs",
+    "crates/cli/tests/common/mod.rs",
+    "crates/cli/tests/integration.rs",
+    "crates/core/benches/speed/main.rs",
+    "crates/core/examples/demo.rs",
+    "crates/core/src/io.rs",
+    "crates/core/src/lib.rs",
+    "fuzz/fuzz_targets/target1.rs",
+    "legacy/src/a.rs",
+    "legacy/src/b.rs",
+    "legacy/src/lib.rs",
+    "scripts/standalone.rs",
+    "scripts/util.rs"
+  ],
+  "edges": [
+    ["crates/cli/src/args.rs", "crates/cli/src/main.rs"],
+    ["crates/cli/src/args.rs", "crates/core/src/io.rs"],
+    ["crates/cli/src/bin/extra/main.rs", "crates/cli/src/bin/extra/helper.rs"],
+    ["crates/cli/src/main.rs", "crates/cli/src/args.rs"],
+    ["crates/cli/src/main.rs", "crates/core/src/io.rs"],
+    ["crates/cli/src/tool.rs", "crates/core/src/io.rs"],
+    ["crates/cli/tests/integration.rs", "crates/cli/tests/common/mod.rs"],
+    ["crates/cli/tests/integration.rs", "crates/core/src/io.rs"],
+    ["crates/core/examples/demo.rs", "crates/core/src/lib.rs"],
+    ["crates/core/src/lib.rs", "crates/core/src/io.rs"],
+    ["fuzz/fuzz_targets/target1.rs", "crates/core/src/io.rs"],
+    ["legacy/src/a.rs", "legacy/src/b.rs"],
+    ["legacy/src/b.rs", "legacy/src/a.rs"],
+    ["legacy/src/lib.rs", "legacy/src/a.rs"],
+    ["legacy/src/lib.rs", "legacy/src/b.rs"],
+    ["scripts/standalone.rs", "crates/core/src/io.rs"],
+    ["scripts/standalone.rs", "scripts/util.rs"]
+  ]
+}
