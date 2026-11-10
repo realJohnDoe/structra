@@ -20,12 +20,20 @@ async function bundleEntry(): Promise<string> {
   return output.map((chunk) => (chunk.type === 'chunk' ? chunk.code : '')).join('\n')
 }
 
-test("the browser's trees for flask match Node's 101-step snapshot", async ({ page }) => {
-  const code = await bundleEntry()
-  await page.goto('./') // any page of the app's origin: crypto.subtle needs a secure context
-  await page.addScriptTag({ content: code })
-  const browser = await page.evaluate(() =>
-    (window as unknown as { crossEngine: { flaskSnapshot(): Promise<string> } }).crossEngine.flaskSnapshot(),
-  )
-  expect(browser).toBe(readFileSync('examples/flask.snapshot.json', 'utf8'))
-})
+type CrossEngine = Record<'flaskSnapshot' | 'uploadedFlaskSnapshot', () => Promise<string>>
+
+for (const [title, entry] of [
+  ["the browser's trees read off flask's shipped artifact", 'flaskSnapshot'],
+  ["the browser's trees built from an uploaded flask Graph File", 'uploadedFlaskSnapshot'],
+] as const) {
+  test(`${title} match Node's 101-step snapshot`, async ({ page }) => {
+    const code = await bundleEntry()
+    await page.goto('./') // any page of the app's origin: crypto.subtle needs a secure context
+    await page.addScriptTag({ content: code })
+    const browser = await page.evaluate(
+      (entry) => (window as unknown as { crossEngine: CrossEngine }).crossEngine[entry](),
+      entry,
+    )
+    expect(browser).toBe(readFileSync('examples/flask.snapshot.json', 'utf8'))
+  })
+}

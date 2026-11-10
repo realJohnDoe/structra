@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { exampleRepos, exampleRepoTitle, loadExampleRepo, type LoadedRepo } from './app/examples.ts'
 import { folderCounts } from './app/folders.ts'
 import { Details } from './app/Details.tsx'
@@ -24,16 +24,32 @@ import {
 import { Icicle, IN_COLOUR, OUT_COLOUR } from './app/Icicle.tsx'
 import { adjacency } from './app/imports.ts'
 import { summarize } from './app/summary.ts'
+import { buildUploadedRepo, readGraphFile, type UploadReading } from './app/upload.ts'
 import { lambdaOf, readViewState, viewStateSearch } from './app/url.ts'
 import { STEPS } from './core/artifact.ts'
 import { createGroupStats } from './core/groupStats.ts'
 import type { OptimalGroup } from './core/sweep.ts'
 
+/** The repo menu's values for "Your own Graph File…" and for the uploaded one once shown. */
+const UPLOAD = ':upload'
+const UPLOADED = ':uploaded'
+
+/** Resolves after the browser has painted, so a loading state shows before a long synchronous build. */
+const afterPaint = () => new Promise<void>((resolve) => requestAnimationFrame(() => setTimeout(resolve)))
+
 export default function App() {
   const [initial] = useState(() => readViewState(window.location.search, exampleRepos))
-  const [repoName, setRepoName] = useState(initial.repo)
+  /** The Example Repo chosen in the menu, or null once an uploaded Graph File is shown. */
+  const [repoName, setRepoName] = useState<string | null>(initial.repo)
   const [step, setStep] = useState(initial.step)
   const [repo, setRepo] = useState<LoadedRepo | null>(null)
+  /** The uploaded Graph File being built, by file name. */
+  const [building, setBuilding] = useState<string | null>(null)
+  const [uploadError, setUploadError] = useState<(Extract<UploadReading, { ok: false }> & { file: string }) | null>(null)
+  const [dragging, setDragging] = useState(false)
+  const fileInput = useRef<HTMLInputElement>(null)
+  /** Counts loads, so only the latest one started is shown. */
+  const loads = useRef(0)
   /** Dendrogram ids of the groups zoomed through, root first; resolved against each step's tree. */
   const [zoomIds, setZoomIds] = useState<number[]>([])
   /** The selected item, as tapped; re-read against each step's tree. */
@@ -41,19 +57,73 @@ export default function App() {
   /** The display-only block opened in its owner group, if any. */
   const [opened, setOpened] = useState<DisplayItem | null>(null)
 
+  const show = (load: number, r: LoadedRepo) => {
+    if (load !== loads.current) return
+    setRepo(r)
+    setZoomIds([])
+    setSelected(null)
+    setOpened(null)
+  }
+
+  const chooseExample = (name: string) => {
+    const load = ++loads.current
+    setRepoName(name)
+    setBuilding(null)
+    setUploadError(null)
+    loadExampleRepo(name).then((r) => show(load, r))
+  }
+
   useEffect(() => {
-    let live = true
-    loadExampleRepo(repoName).then((r) => {
-      if (!live) return
-      setRepo(r)
-      setZoomIds([])
-      setSelected(null)
-      setOpened(null)
-    })
-    return () => {
-      live = false
+    const load = ++loads.current
+    loadExampleRepo(initial.repo).then((r) => show(load, r))
+  }, [initial])
+
+  // An invalid file leaves the shown repo in place; a valid one is built here, as offline, then shown.
+  const upload = async (file: File) => {
+    const load = ++loads.current
+    setUploadError(null)
+    setBuilding(file.name)
+    await afterPaint()
+    const reading = readGraphFile(await file.text())
+    if (load !== loads.current) return // another repo or file was chosen meanwhile
+    if (!reading.ok) {
+      setBuilding(null)
+      return setUploadError({ ...reading, file: file.name })
     }
-  }, [repoName])
+    const r = await buildUploadedRepo(reading.graph)
+    if (load !== loads.current) return
+    setBuilding(null)
+    setRepoName(null)
+    show(load, r)
+  }
+
+  // Dropping a file anywhere on the page uploads it.
+  useEffect(() => {
+    const hasFiles = (e: DragEvent) => e.dataTransfer?.types.includes('Files') ?? false
+    const over = (e: DragEvent) => {
+      if (!hasFiles(e)) return
+      e.preventDefault()
+      setDragging(true)
+    }
+    const leave = (e: DragEvent) => {
+      if (!e.relatedTarget) setDragging(false)
+    }
+    const drop = (e: DragEvent) => {
+      if (!hasFiles(e)) return
+      e.preventDefault()
+      setDragging(false)
+      const file = e.dataTransfer?.files[0]
+      if (file) upload(file)
+    }
+    window.addEventListener('dragover', over)
+    window.addEventListener('dragleave', leave)
+    window.addEventListener('drop', drop)
+    return () => {
+      window.removeEventListener('dragover', over)
+      window.removeEventListener('dragleave', leave)
+      window.removeEventListener('drop', drop)
+    }
+  })
 
   useEffect(() => {
     window.history.replaceState(null, '', viewStateSearch({ repo: repoName, step }))
@@ -122,20 +192,62 @@ export default function App() {
   }
 
   return (
-    <div className="app">
+    <div className={dragging ? 'app dragging' : 'app'}>
       <header className="header">
         <span className="brand">Structra</span>
         <label>
           <span className="visually-hidden">Example Repo</span>
-          <select value={repoName} onChange={(e) => setRepoName(e.target.value)}>
+          <select
+            value={repoName ?? UPLOADED}
+            onChange={(e) => {
+              if (e.target.value === UPLOAD) fileInput.current?.click()
+              else if (e.target.value !== UPLOADED) chooseExample(e.target.value)
+            }}
+          >
             {exampleRepos.map((name) => (
               <option key={name} value={name}>
                 {exampleRepoTitle(name)}
               </option>
             ))}
+            <hr />
+            {repoName === null && repo && <option value={UPLOADED}>{repo.name} (your file)</option>}
+            <option value={UPLOAD}>Your own Graph File…</option>
           </select>
         </label>
+        <input
+          ref={fileInput}
+          type="file"
+          accept=".json,application/json"
+          hidden
+          aria-label="Your own Graph File"
+          onChange={(e) => {
+            const file = e.target.files?.[0]
+            e.target.value = ''
+            if (file) upload(file)
+          }}
+        />
       </header>
+      {building && (
+        <p className="notice" role="status">
+          Loading {building} and building its Optimal Trees…
+        </p>
+      )}
+      {uploadError && (
+        <div className="notice error" role="alert">
+          <p>
+            <strong>{uploadError.file}</strong>: {uploadError.message}
+          </p>
+          <ul>
+            {uploadError.details.slice(0, 5).map((d) => (
+              <li key={d}>{d}</li>
+            ))}
+            {uploadError.details.length > 5 && <li>and {uploadError.details.length - 5} more</li>}
+          </ul>
+          <button type="button" onClick={() => setUploadError(null)}>
+            Dismiss
+          </button>
+        </div>
+      )}
       <main className="main">
         {repo && tree && stats && ctx && colours && (
           <>
