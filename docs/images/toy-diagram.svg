@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="520" height="302" viewBox="0 0 520 302" role="img" aria-label="A toy Dependency Graph of 8 files next to its Optimal Tree at λ = 0.80">
+  <style>
+    text { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; fill: #24292f; }
+    .title { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 14px; font-weight: 600; }
+    .label { fill: #57606a; }
+    .ink { fill: #57606a; }
+    .import { fill: none; stroke-width: 1.5; opacity: 0.85; }
+    .across { stroke: #8c959f; stroke-dasharray: 4 3; }
+    .tree { fill: none; stroke-width: 2; }
+    .tree:not([stroke]) { stroke: #57606a; }
+    #head path { fill: #8c959f; }
+    @media (prefers-color-scheme: dark) {
+      text { fill: #e6edf3; }
+      .label, .ink { fill: #9198a1; }
+      .tree:not([stroke]) { stroke: #9198a1; }
+      .across { stroke: #6e7681; }
+      #head path { fill: #6e7681; }
+    }
+  </style>
+  <defs>
+    <marker id="head" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L8 4 L0 8 z"/></marker>
+    <marker id="head-0" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L8 4 L0 8 z" fill="#2f7fd8"/></marker>
+    <marker id="head-1" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L8 4 L0 8 z" fill="#e0802a"/></marker>
+    <marker id="head-2" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L8 4 L0 8 z" fill="#2a9d6e"/></marker>
+    <marker id="head-3" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L8 4 L0 8 z" fill="#9b5de5"/></marker>
+    <marker id="head-4" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L8 4 L0 8 z" fill="#d64f7a"/></marker>
+  </defs>
+  <text class="title" x="16" y="26">Dependency Graph</text>
+  <text class="title" x="308" y="26">Optimal Tree at λ = 0.80</text>
+  <path class="import" d="M110 58 C79 58 79 88 108 88" stroke="#2f7fd8" marker-end="url(#head-0)"/>
+  <path class="import across" d="M110 88 C34 88 34 208 108 208" marker-end="url(#head)"/>
+  <path class="import" d="M110 88 C79 88 79 118 108 118" stroke="#2f7fd8" marker-end="url(#head-0)"/>
+  <path class="import" d="M110 208 C79 208 79 238 108 238" stroke="#2a9d6e" marker-end="url(#head-2)"/>
+  <path class="import" d="M110 208 C64 208 64 268 108 268" stroke="#2a9d6e" marker-end="url(#head-2)"/>
+  <path class="import" d="M110 268 C79 268 79 238 108 238" stroke="#2a9d6e" marker-end="url(#head-2)"/>
+  <path class="import across" d="M110 118 C64 118 64 178 108 178" marker-end="url(#head)"/>
+  <path class="import across" d="M110 178 C79 178 79 208 108 208" marker-end="url(#head)"/>
+  <path class="import" d="M110 178 C79 178 79 148 108 148" stroke="#e0802a" marker-end="url(#head-1)"/>
+  <circle cx="116" cy="58" r="4" fill="#2f7fd8"/>
+  <text class="file" x="128" y="62">toy/__init__.py</text>
+  <circle cx="116" cy="88" r="4" fill="#2f7fd8"/>
+  <text class="file" x="128" y="92">toy/cli.py</text>
+  <circle cx="116" cy="118" r="4" fill="#2f7fd8"/>
+  <text class="file" x="128" y="122">toy/web/routes.py</text>
+  <circle cx="116" cy="148" r="4" fill="#e0802a"/>
+  <text class="file" x="128" y="152">toy/web/templates.py</text>
+  <circle cx="116" cy="178" r="4" fill="#e0802a"/>
+  <text class="file" x="128" y="182">toy/web/views.py</text>
+  <circle cx="116" cy="208" r="4" fill="#2a9d6e"/>
+  <text class="file" x="128" y="212">toy/core/engine.py</text>
+  <circle cx="116" cy="238" r="4" fill="#2a9d6e"/>
+  <text class="file" x="128" y="242">toy/core/models.py</text>
+  <circle cx="116" cy="268" r="4" fill="#2a9d6e"/>
+  <text class="file" x="128" y="272">toy/core/store.py</text>
+  <path class="tree" stroke="#2f7fd8" d="M342 58 V88"/>
+  <path class="tree" stroke="#2f7fd8" d="M308 58 H342"/>
+  <path class="tree" stroke="#2f7fd8" d="M308 88 H342"/>
+  <path class="tree" stroke="#2f7fd8" d="M376 73 V118"/>
+  <path class="tree" stroke="#2f7fd8" d="M342 73 H376"/>
+  <path class="tree" stroke="#2f7fd8" d="M308 118 H376"/>
+  <path class="tree" stroke="#e0802a" d="M342 148 V178"/>
+  <path class="tree" stroke="#e0802a" d="M308 148 H342"/>
+  <path class="tree" stroke="#e0802a" d="M308 178 H342"/>
+  <path class="tree" stroke="#2a9d6e" d="M342 238 V268"/>
+  <path class="tree" stroke="#2a9d6e" d="M308 238 H342"/>
+  <path class="tree" stroke="#2a9d6e" d="M308 268 H342"/>
+  <path class="tree" stroke="#2a9d6e" d="M376 208 V253"/>
+  <path class="tree" stroke="#2a9d6e" d="M308 208 H376"/>
+  <path class="tree" stroke="#2a9d6e" d="M342 253 H376"/>
+  <path class="tree" d="M410 95.5 V230.5"/>
+  <path class="tree" stroke="#2f7fd8" d="M376 95.5 H410"/>
+  <path class="tree" stroke="#e0802a" d="M342 163 H410"/>
+  <path class="tree" stroke="#2a9d6e" d="M376 230.5 H410"/>
+  <path class="tree" d="M410 163 H420"/>
+  <text class="label" x="426" y="167">All 8 files</text>
+</svg>
