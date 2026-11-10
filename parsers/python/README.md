@@ -23,4 +23,4 @@ Fixture commits use a fixed author and date, so `meta.commit` is stable. When yo
 
 `tests/test_grimp_oracle.py` checks the Parser's edges against grimp's on every fixture's regular packages. Intended differences are listed, with reasons, in its `DIFFERENCES`.
 
-Python resolution doesn't see dynamic imports (`importlib.import_module`, `__import__`), or sub-projects that only an install would put on `sys.path` (such as flask's `examples/tutorial`). Source roots are the repository root and `src/`.
+Python resolution doesn't see dynamic imports (`importlib.import_module`, `__import__`). Source roots are each project's directory and its `src/`, where a project is the repository root or a directory with a `pyproject.toml`, `setup.py` or `setup.cfg` (nearest project first).

@@ -1,0 +1,27 @@
+{
+  "meta": {
+    "repo": "https://github.com/example/subprojects",
+    "commit": "9c05b9b274392bf925025998ca8d00a09928a649",
+    "language": "python",
+    "parser": { "name": "structra-parse-python" }
+  },
+  "nodes": [
+    "examples/celery/make_celery.py",
+    "examples/celery/setup.py",
+    "examples/celery/src/core.py",
+    "examples/celery/src/task_app/__init__.py",
+    "examples/tutorial/flaskr/__init__.py",
+    "examples/tutorial/flaskr/db.py",
+    "examples/tutorial/tests/test_db.py",
+    "src/core/__init__.py",
+    "tests/test_core.py"
+  ],
+  "edges": [
+    ["examples/celery/make_celery.py", "examples/celery/src/core.py"],
+    ["examples/celery/make_celery.py", "examples/celery/src/task_app/__init__.py"],
+    ["examples/tutorial/flaskr/__init__.py", "examples/tutorial/flaskr/db.py"],
+    ["examples/tutorial/flaskr/__init__.py", "src/core/__init__.py"],
+    ["examples/tutorial/tests/test_db.py", "examples/tutorial/flaskr/db.py"],
+    ["tests/test_core.py", "src/core/__init__.py"]
+  ]
+}

@@ -7,9 +7,12 @@ Resolution rules (see docs/research/import-resolution.md, section 1):
 - Modules are looked up among the In-scope Files only, by exact path, so
   results don't depend on the filesystem's case sensitivity. A module `a/b` is
   `a/b/__init__.py`, `a/b.py`, `a/b/__init__.pyi` or `a/b.pyi`, in that order.
-- Absolute imports are looked up in the source roots, the repository root and
-  then `src/`. The first root that has the top-level name (as a module or as a
-  directory) is used, as `sys.path` would.
+- Absolute imports are looked up in source roots. Every project (the
+  repository root, and each directory with a tracked `pyproject.toml`,
+  `setup.py` or `setup.cfg`) has two: its own directory, then its `src/`. A
+  file sees the roots of the projects it is in, nearest project first. The
+  first root that has the top-level name (as a module or as a directory) is
+  used, as `sys.path` would.
 - Relative imports are resolved from the importing file's directory.
 - An import links to the longest prefix of its dotted name that is a module
   (grimp's rule). For `from M import n`, `M.n` is tried first, so importing a
@@ -25,8 +28,24 @@ import warnings
 from pathlib import Path
 
 from .cli import Diagnostics, Language, run
+from .scope import tracked_files
 
-ROOTS = ("", "src")
+PROJECT_MARKERS = frozenset({"pyproject.toml", "setup.py", "setup.cfg"})
+
+
+class _Roots:
+    """The source roots each directory sees, nearest project first."""
+
+    def __init__(self, tracked: list[str]) -> None:
+        self.projects = {""} | {posixpath.dirname(f) for f in tracked if posixpath.basename(f) in PROJECT_MARKERS}
+        self.cache: dict[str, list[str]] = {}
+
+    def of(self, directory: str) -> list[str]:
+        if directory not in self.cache:
+            outer = self.of(posixpath.dirname(directory)) if directory else []
+            own = [directory, posixpath.join(directory, "src")] if directory in self.projects else []
+            self.cache[directory] = own + outer
+        return self.cache[directory]
 
 
 class _Modules:
@@ -58,7 +77,9 @@ class _Modules:
         return None
 
 
-def _targets(modules: _Modules, file: str, node: ast.Import | ast.ImportFrom, diagnostics: Diagnostics) -> list[str]:
+def _targets(
+    modules: _Modules, roots: list[str], file: str, node: ast.Import | ast.ImportFrom, diagnostics: Diagnostics
+) -> list[str]:
     """The files one import statement links to."""
     if isinstance(node, ast.Import):
         requests = [(0, alias.name, None) for alias in node.names]
@@ -77,7 +98,7 @@ def _targets(modules: _Modules, file: str, node: ast.Import | ast.ImportFrom, di
                 continue
             base = "/".join(package[: len(package) - (level - 1)])
         else:
-            base = next((r for r in ROOTS if modules.exists(posixpath.join(r, parts[0]))), None)
+            base = next((r for r in roots if modules.exists(posixpath.join(r, parts[0]))), None)
             if base is None:
                 continue  # not a module of this repository
         found = name is not None and modules.file(posixpath.join(base, *parts, name))
@@ -91,6 +112,7 @@ def _targets(modules: _Modules, file: str, node: ast.Import | ast.ImportFrom, di
 
 def resolve(repo: Path, files: list[str], diagnostics: Diagnostics) -> list[tuple[str, str]]:
     modules = _Modules(files)
+    roots = _Roots(tracked_files(repo))
     edges = []
     for file in files:
         try:
@@ -102,7 +124,8 @@ def resolve(repo: Path, files: list[str], diagnostics: Diagnostics) -> list[tupl
             continue
         for node in ast.walk(tree):
             if isinstance(node, ast.Import | ast.ImportFrom):
-                edges.extend((file, target) for target in _targets(modules, file, node, diagnostics))
+                targets = _targets(modules, roots.of(posixpath.dirname(file)), file, node, diagnostics)
+                edges.extend((file, target) for target in targets)
     return edges
 
 

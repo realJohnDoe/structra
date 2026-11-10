@@ -1,14 +1,15 @@
 """Which files of a checkout are In-scope Files (ADR 0003)."""
 
 import subprocess
+from collections.abc import Sequence
 from pathlib import Path
 
 VENDORED = frozenset({"vendor", "third_party", "third-party", "node_modules"})
 
 
-def in_scope_files(repo: Path, extensions: frozenset[str], excludes: list[str]) -> list[str]:
-    """Tracked files with one of `extensions`, minus vendored directories,
-    submodules and paths matching an `excludes` glob (git pathspec syntax)."""
+def tracked_files(repo: Path, excludes: Sequence[str] = ()) -> list[str]:
+    """Tracked files outside vendored directories and submodules, minus paths
+    matching an `excludes` glob (git pathspec syntax)."""
     pathspecs = [f":(top,glob,exclude){glob}" for glob in excludes]
     out = subprocess.run(
         ["git", "-C", str(repo), "ls-files", "-z", "--stage", "--", *pathspecs],
@@ -22,9 +23,13 @@ def in_scope_files(repo: Path, extensions: frozenset[str], excludes: list[str]) 
         info, path = entry.split("\t", 1)
         if info.startswith("160000 "):  # a submodule
             continue
-        if Path(path).suffix not in extensions:
-            continue
         if VENDORED.intersection(path.split("/")):
             continue
         files.append(path)
     return files
+
+
+def in_scope_files(repo: Path, extensions: frozenset[str], excludes: list[str]) -> list[str]:
+    """Tracked files with one of `extensions`, minus vendored directories,
+    submodules and `excludes`."""
+    return [path for path in tracked_files(repo, excludes) if Path(path).suffix in extensions]
