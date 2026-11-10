@@ -1,0 +1,28 @@
+{
+  "meta": {
+    "repo": "https://github.com/example/workspaces-npm",
+    "commit": "7128c90a16e0829badc45a511693e308c9028d22",
+    "language": "typescript",
+    "parser": { "name": "structra-parse-typescript" }
+  },
+  "nodes": [
+    "packages/app/index.ts",
+    "packages/core/src/feature.ts",
+    "packages/core/src/index.ts",
+    "packages/core/src/internal.ts",
+    "packages/core/src/plugins/csv.ts",
+    "packages/util/lib/util.js",
+    "tools/deep/nested/index.js",
+    "tools/skipped/index.js"
+  ],
+  "edges": [
+    ["packages/app/index.ts", "packages/core/src/feature.ts"],
+    ["packages/app/index.ts", "packages/core/src/index.ts"],
+    ["packages/app/index.ts", "packages/core/src/internal.ts"],
+    ["packages/app/index.ts", "packages/core/src/plugins/csv.ts"],
+    ["packages/app/index.ts", "packages/util/lib/util.js"],
+    ["packages/app/index.ts", "tools/deep/nested/index.js"],
+    ["packages/core/src/index.ts", "packages/core/src/feature.ts"],
+    ["packages/util/lib/util.js", "packages/core/src/index.ts"]
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "meta": {
+    "repo": "https://github.com/example/resolution",
+    "commit": "6a3f95bb0fe5715ecc75267f4d03b3b9c68b3476",
+    "language": "typescript",
+    "parser": { "name": "structra-parse-typescript" }
+  },
+  "nodes": [
+    "src/alias.ts",
+    "src/assigned.ts",
+    "src/config.ts",
+    "src/helper.cts",
+    "src/lazy.jsx",
+    "src/legacy.cjs",
+    "src/main.ts",
+    "src/reexport.mts",
+    "src/side-effect.mjs",
+    "src/types.ts",
+    "src/util.ts",
+    "src/widgets/index.tsx"
+  ],
+  "edges": [
+    ["src/main.ts", "src/alias.ts"],
+    ["src/main.ts", "src/assigned.ts"],
+    ["src/main.ts", "src/config.ts"],
+    ["src/main.ts", "src/helper.cts"],
+    ["src/main.ts", "src/lazy.jsx"],
+    ["src/main.ts", "src/legacy.cjs"],
+    ["src/main.ts", "src/reexport.mts"],
+    ["src/main.ts", "src/side-effect.mjs"],
+    ["src/main.ts", "src/types.ts"],
+    ["src/main.ts", "src/util.ts"],
+    ["src/main.ts", "src/widgets/index.tsx"]
+  ]
+}

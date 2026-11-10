@@ -29,6 +29,8 @@ const uvParser = (cli: string) => ['uv', 'run', '--project', 'parsers/python', '
 const parsers: Record<string, string[]> = {
   python: uvParser('structra-parse-python'),
   c: uvParser('structra-parse-c'),
+  // Needs `npm ci --prefix parsers/typescript` first.
+  typescript: ['node', 'parsers/typescript/src/cli.ts'],
 }
 
 const list = (parse(readFileSync(join(examples, 'repos.toml'), 'utf8')) as unknown as { repo: ExampleRepo[] }).repo

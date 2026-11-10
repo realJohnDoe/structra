@@ -1,0 +1,40 @@
+# An installed node_modules in the checkout doesn't change the Graph File: the
+# Parser reads neither packages nor tsconfig `extends` from it, so the output
+# is the same as for a fresh clone. Workspace packages still resolve to their
+# sources, through the Parser's own links.
+origin = "https://github.com/example/installed-deps"
+stderr = ["tsconfig.json: File '@cfg/tsconfig/base.json' not found."]
+
+[files]
+".gitignore" = "node_modules/\n"
+"package.json" = """
+{ "name": "root", "private": true, "workspaces": ["packages/*"] }
+"""
+"tsconfig.json" = """
+{ "extends": "@cfg/tsconfig/base.json" }
+"""
+"packages/app/package.json" = """
+{ "name": "app" }
+"""
+"packages/app/main.ts" = """
+import { a } from '~/a'
+import { lib } from 'lib'
+import { core } from 'core'
+"""
+"packages/app/src/a.ts" = ""
+"packages/core/package.json" = """
+{ "name": "core", "exports": "./dist/index.js" }
+"""
+"packages/core/src/index.ts" = ""
+
+[untracked]
+"node_modules/@cfg/tsconfig/base.json" = """
+{ "compilerOptions": { "baseUrl": "../../../packages/app", "paths": { "~/*": ["src/*"] } } }
+"""
+"node_modules/lib/package.json" = """
+{ "name": "lib", "main": "../../packages/app/src/a.ts" }
+"""
+"node_modules/core/package.json" = """
+{ "name": "core", "main": "dist/index.js" }
+"""
+"node_modules/core/dist/index.js" = ""
