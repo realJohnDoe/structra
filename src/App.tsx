@@ -194,7 +194,10 @@ export default function App() {
   return (
     <div className={dragging ? 'app dragging' : 'app'}>
       <header className="header">
-        <span className="brand">Structra</span>
+        <span className="brand">
+          <img src={`${import.meta.env.BASE_URL}logo.png`} alt="" />
+          Structra
+        </span>
         <label>
           <span className="visually-hidden">Example Repo</span>
           <select

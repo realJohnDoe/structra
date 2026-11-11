@@ -1,11 +1,13 @@
 :root {
   color-scheme: dark;
-  --bg: #0f0f0f;
-  --panel: #161616;
-  --line: #2a2a2a;
-  --text: #e8e8e8;
-  --dim: #8a8a8a;
-  --accent: #c8f060;
+  /* Navy and cyan from the logo. The icicle's blocks and import lines keep their own colours. */
+  --bg: #020a1f;
+  --panel: #07122c;
+  --line: #1a2a4d;
+  --text: #e4eefc;
+  --dim: #8698ba;
+  --accent: #19e3f2;
+  --accent-2: #1aa3ff;
   font-family: ui-monospace, 'JetBrains Mono', SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 14px;
 }
@@ -46,8 +48,19 @@ body {
 }
 
 .brand {
-  color: var(--accent);
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-weight: 700;
+  font-size: 16px;
+  background: linear-gradient(90deg, var(--accent-2), var(--accent));
+  background-clip: text;
+  color: transparent;
+}
+
+.brand img {
+  width: 24px;
+  height: 24px;
 }
 
 select,
