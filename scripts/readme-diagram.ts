@@ -1,7 +1,7 @@
 // Draws the README's toy diagram: the toy Graph File's Dependency Graph next to
 // its Optimal Tree, both from our own optimizer, as one SVG.
 //
-//   npm run readme:diagram [-- --out FILE]
+//   pnpm run readme:diagram [-- --out FILE]
 //
 // Reads examples/toy.graph.json and writes docs/images/toy-diagram.svg (or FILE).
 // The output is byte-deterministic; scripts/readme-diagram.test.ts checks that

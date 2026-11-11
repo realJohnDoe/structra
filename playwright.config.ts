@@ -10,7 +10,7 @@ export default defineConfig({
     trace: 'off',
   },
   webServer: {
-    command: 'npm run build && npx vite preview --port 4173 --strictPort',
+    command: 'pnpm run build && pnpm exec vite preview --port 4173 --strictPort',
     url: 'http://localhost:4173/structra/',
     reuseExistingServer: !process.env.CI,
     timeout: 180_000,

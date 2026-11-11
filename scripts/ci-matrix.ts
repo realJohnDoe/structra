@@ -40,7 +40,7 @@ const shared = [
 // A change to any of these re-runs the Node and Playwright jobs.
 const app = [
   /^(src|e2e|scripts|examples|schema|public)\//,
-  /^(package(-lock)?\.json|index\.html|(vite|vitest|playwright|tsconfig)[^/]*|eslint\.config\.js)$/,
+  /^(package\.json|pnpm-(lock|workspace)\.yaml|index\.html|(vite|vitest|playwright|tsconfig)[^/]*|eslint\.config\.js)$/,
   /^\.github\/workflows\/(e2e|deploy)\.yml$/,
 ]
 

@@ -23,11 +23,12 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
-      - run: npm ci
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
       - id: select
         env:
           EVENT: ${{ github.event_name }}
@@ -53,6 +54,7 @@ jobs:
       matrix: ${{ fromJSON(needs.changes.outputs.selection).matrix }}
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -63,7 +65,7 @@ jobs:
           cache-dependency-glob: parsers/python/uv.lock
       - name: Install the Parser's dependencies
         if: matrix.toolchain == 'node'
-        run: npm ci --prefix parsers/${{ matrix.language }}
+        run: pnpm install --frozen-lockfile --filter ./parsers/${{ matrix.language }}
       - name: Parse and compare
         env:
           NAME: ${{ matrix.name }}
@@ -107,13 +109,13 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: parsers/typescript/package-lock.json
-      - run: npm ci --prefix parsers/typescript
-      - run: npm test --prefix parsers/typescript
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --filter ./parsers/typescript
+      - run: pnpm --dir parsers/typescript test
 
   # Clone-free: the committed Graph Files must reproduce the committed
   # dendrogram artifacts and snapshots byte for byte, and the unit tests pass.
@@ -124,11 +126,12 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
-      - run: npm ci
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
       - name: Rebuild dendrograms and snapshots from the committed Graph Files
         run: |
           out="$RUNNER_TEMP/regen"
@@ -139,7 +142,7 @@ jobs:
             cmp "$file" "examples/$(basename "$file")" || status=1
           done
           exit $status
-      - run: npm test
+      - run: pnpm test
 
   playwright:
     needs: changes
@@ -148,13 +151,14 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
-      - run: npm ci
-      - run: npx playwright install --with-deps chromium
-      - run: npm run test:e2e
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm run test:e2e
 
   e2e-ok:
     if: always()

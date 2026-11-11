@@ -1,6 +1,6 @@
 // Regenerates the artifacts of Example Repos from the Example Repo List.
 //
-//   npm run examples:regen -- [name...]
+//   pnpm run examples:regen -- [name...]
 //
 // For each named repo (default: all of examples/repos.toml), it clones the repo
 // at its pin with scripts/clone-at-pin.sh, runs its language's Parser with the
@@ -29,7 +29,7 @@ const list = (parse(readFileSync(join(examples, 'repos.toml'), 'utf8')) as unkno
 const names = process.argv.slice(2)
 const unknown = names.filter((name) => name.startsWith('-') || !list.some((repo) => repo.name === name))
 if (unknown.length) {
-  console.error(`usage: npm run examples:regen -- [name...]\nnot in examples/repos.toml: ${unknown.join(', ')}`)
+  console.error(`usage: pnpm run examples:regen -- [name...]\nnot in examples/repos.toml: ${unknown.join(', ')}`)
   process.exit(2)
 }
 const repos = names.length ? list.filter((repo) => names.includes(repo.name)) : list

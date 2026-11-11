@@ -8,7 +8,7 @@ Structra reads the file-to-file imports of a repository (its **Dependency Graph*
   <img src="docs/images/toy-diagram.svg" alt="Eight files of a toy package. On the left, their imports drawn as arcs; on the right, their Optimal Tree at λ = 0.80, with three groups: __init__, cli and web/routes; web/templates and web/views; and the three core files.">
 </p>
 
-Eight files of a toy package ([`examples/toy.graph.json`](examples/toy.graph.json)), drawn by Structra's own optimizer (`npm run readme:diagram`). Solid arcs are imports inside one group, dashed arcs cross between groups. `web/routes.py` lands next to `cli.py`, not with the other `web/` files: that is where its imports put it.
+Eight files of a toy package ([`examples/toy.graph.json`](examples/toy.graph.json)), drawn by Structra's own optimizer (`pnpm run readme:diagram`). Solid arcs are imports inside one group, dashed arcs cross between groups. `web/routes.py` lands next to `cli.py`, not with the other `web/` files: that is where its imports put it.
 
 ## Live demo
 
@@ -64,7 +64,7 @@ The app ships precomputed Optimal Trees for well-known repositories in Python, T
    ```sh
    git clone https://github.com/realJohnDoe/structra
    uv tool install ./structra/parsers/python                         # structra-parse-python, -rust and -c
-   (cd structra/parsers/typescript && npm ci && npm install -g .)    # structra-parse-typescript (Node 22.18+)
+   (cd structra && pnpm install --frozen-lockfile && npm install -g ./parsers/typescript) # structra-parse-typescript (Node 22.18+)
    ```
 
 2. **Run it** on a clean git checkout with an `origin` remote. It reads the files git tracks at `HEAD` and records the commit and repository it read.

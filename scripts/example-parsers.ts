@@ -18,6 +18,6 @@ export const parsers: Record<string, { command: string[]; toolchain: 'uv' | 'nod
     toolchain: 'uv',
     dir: 'parsers/python',
   },
-  // Needs `npm ci --prefix parsers/typescript` first.
+  // Needs `pnpm install` first.
   typescript: { command: ['node', 'parsers/typescript/src/cli.ts'], toolchain: 'node', dir: 'parsers/typescript' },
 }
