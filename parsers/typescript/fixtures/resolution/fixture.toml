@@ -1,7 +1,8 @@
 # What gives an edge: ES imports and re-exports, `import type`, side-effect
 # imports, `require`, dynamic `import()`, `import x = require()`, `.js`
 # specifiers of `.ts` files, extensionless and directory (`index`) imports,
-# tsconfig `paths` (from the nearest tsconfig.json, `extends` flattened) and
+# tsconfig `paths` (from the tsconfig that governs the file, `extends` flattened;
+# see the tsconfig-references fixture) and
 # package.json `imports`. Node built-ins, external packages and non-code files
 # give none; relative imports that don't resolve are counted on stderr.
 origin = "https://github.com/example/resolution"

@@ -1,0 +1,35 @@
+# Which tsconfig governs a file (Vite's solution-style layout): the root
+# tsconfig.json has `"files": []` and `references`, and the `@/*` alias lives
+# in the referenced tsconfig.app.json, which excludes tests. Files it holds
+# resolve with it; tests resolve with the unreferenced sibling
+# tsconfig.test.json; a file no tsconfig holds stays with the root one, where
+# its `@/` import doesn't resolve and is counted rather than taken for an
+# external package.
+origin = "https://github.com/example/tsconfig-references"
+stderr = [
+  "1 unresolved internal-looking imports",
+  "  @/util (1)",
+]
+
+[files]
+"tsconfig.json" = """
+{ "files": [], "references": [{ "path": "./tsconfig.app.json" }, { "path": "./tsconfig.node.json" }] }
+"""
+"tsconfig.app.json" = """
+{
+  "compilerOptions": { "moduleResolution": "bundler", "paths": { "@/*": ["./src/*"] } },
+  "include": ["src"],
+  "exclude": ["src/**/*.test.ts"]
+}
+"""
+"tsconfig.node.json" = """
+{ "compilerOptions": { "moduleResolution": "bundler" }, "include": ["vite.config.ts"] }
+"""
+"tsconfig.test.json" = """
+{ "extends": "./tsconfig.app.json", "include": ["src"], "exclude": [] }
+"""
+"src/main.ts" = "import { util } from '@/util'\nimport express from 'express'\n"
+"src/util.ts" = "export const util = 1\n"
+"src/util.test.ts" = "import { util } from '@/util'\n"
+"vite.config.ts" = "import { util } from './src/util'\n"
+"scripts/tool.ts" = "import { util } from '@/util'\n"
