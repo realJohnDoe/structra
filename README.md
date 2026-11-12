@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/images/banner.jpg" alt="Structra" width="100%">
+</p>
+
 # Structra
 
 **See the structure your imports imply.**
