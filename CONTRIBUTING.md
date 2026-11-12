@@ -7,18 +7,18 @@ This is the developer guide. For what Structra is and how to use it, see the [RE
 The app and the repo scripts need Node 22.18 or later (the scripts are TypeScript that Node runs directly).
 
 ```sh
-npm ci
-npm run dev          # the app at http://localhost:5173/structra/
-npm test             # unit tests: tree core, app logic, scripts
-npm run build        # type-check (tsc -b) and build
-npm run test:e2e     # Playwright on the built app (Chromium: npx playwright install chromium)
-npm run lint
+pnpm install
+pnpm run dev          # the app at http://localhost:5173/structra/
+pnpm test             # unit tests: tree core, app logic, scripts
+pnpm run build        # type-check (tsc -b) and build
+pnpm run test:e2e     # Playwright on the built app (Chromium: pnpm exec playwright install chromium)
+pnpm run lint
 ```
 
 The Parsers live in two self-contained toolchains, each with its own README:
 
 - [`parsers/python/`](parsers/python/README.md): uv with a pinned Python. It hosts `structra-parse-python`, `structra-parse-rust` and `structra-parse-c`. `uv sync`, then `uv run pytest`.
-- [`parsers/typescript/`](parsers/typescript/README.md): Node pinned in `.nvmrc`. It hosts `structra-parse-typescript`. `npm ci`, then `npm test`.
+- [`parsers/typescript/`](parsers/typescript/README.md): Node pinned in `.nvmrc`. It hosts `structra-parse-typescript`. `pnpm install` at the repo root (it is a workspace member), then `pnpm test` here.
 
 ## Repo layout
 
@@ -35,7 +35,7 @@ The Parsers live in two self-contained toolchains, each with its own README:
 ## Regenerating examples
 
 ```sh
-npm run examples:regen -- flask django     # no names: every Example Repo
+pnpm run examples:regen -- flask django     # no names: every Example Repo
 ```
 
 For each repo, this clones it at its pin with `scripts/clone-at-pin.sh` (the same script CI uses), runs its Parser with the excludes from `repos.toml`, and rewrites `examples/<name>.graph.json`, `.dendrogram.json` and `.snapshot.json`. It needs the Parser toolchain for each repo's language.
@@ -54,7 +54,7 @@ CI ([`.github/workflows/e2e.yml`](.github/workflows/e2e.yml)) runs only the jobs
 
 - **Graph Files, byte-identical.** One job per Example Repo clones it at its pin, runs its Parser and compares the output with the committed Graph File byte for byte. A mismatch uploads the actual Graph File and writes a node/edge diff to the job summary.
 - **Conformance fixtures.** Each Parser toolchain's fixtures (tiny repos with expected Graph Files and the CLI contract) and, for Python, the grimp oracle.
-- **Dendrograms and snapshots, byte-identical.** A clone-free Node job rebuilds every dendrogram artifact and 101-step λ snapshot (group count, Total Cost and tree hash per step) from the committed Graph Files and compares them byte for byte, then runs the unit tests. The unit tests also check that `docs/images/toy-diagram.svg` is what `npm run readme:diagram` writes.
+- **Dendrograms and snapshots, byte-identical.** A clone-free Node job rebuilds every dendrogram artifact and 101-step λ snapshot (group count, Total Cost and tree hash per step) from the committed Graph Files and compares them byte for byte, then runs the unit tests. The unit tests also check that `docs/images/toy-diagram.svg` is what `pnpm run readme:diagram` writes.
 - **Chromium vs Node.** The Playwright job checks that the trees the browser reads off flask's artifact, and the artifact it computes from flask's Graph File, both match Node's 101-step snapshot ([`e2e/cross-engine.spec.ts`](e2e/cross-engine.spec.ts)). It also runs the app's behaviour tests.
 - **`e2e-ok`** always runs and fails if any selected job failed. It is the required check on `main` and gates the GitHub Pages deploy.
 
@@ -70,13 +70,13 @@ CI ([`.github/workflows/e2e.yml`](.github/workflows/e2e.yml)) runs only the jobs
 The toy diagram comes from the toy Graph File, through the real optimizer:
 
 ```sh
-npm run readme:diagram        # writes docs/images/toy-diagram.svg
+pnpm run readme:diagram        # writes docs/images/toy-diagram.svg
 ```
 
 The stills are phone-width screenshots of the built app (a Pixel 7 viewport), showing flask at λ 0.20, 0.45 and 0.80:
 
 ```sh
-npm run readme:stills         # builds the app, writes docs/images/flask-<λ>.png
+pnpm run readme:stills         # builds the app, writes docs/images/flask-<λ>.png
 ```
 
 They use the same Playwright harness as the e2e tests ([`e2e/readme.stills.ts`](e2e/readme.stills.ts), with `playwright.stills.config.ts`), but CI never runs them, so they don't gate `e2e-ok`. Regenerate them by hand when the app's look or flask's trees change, and check that the README captions still match. When flask's pin changes, update the file count the script waits for (`All 83 files`) too.

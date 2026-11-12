@@ -33,3 +33,7 @@ When a Wayfinder ticket closes, by either route, add its line to the map's "Deci
 ## Trace Map on PRs
 
 Use the `tracemap-pr` skill from [realJohnDoe/tracemap](https://github.com/realJohnDoe/tracemap) (`skills/tracemap-pr/SKILL.md`) on every PR to add trace map images to its description; it decides itself when none would help.
+
+## Package manager
+
+Use pnpm, never npm or yarn. `parsers/typescript` is a workspace member, so install from the repo root. Dependabot proposes updates; non-major ones auto-merge once CI passes.
