@@ -9,7 +9,7 @@
 | Directory | Runtime | CLIs | How it resolves imports |
 |---|---|---|---|
 | `parsers/python/` | Python (pinned minor in `.python-version`, uv + `uv.lock`) | `structra-parse-python`, `structra-parse-rust`, `structra-parse-c` | Python: stdlib `ast`. Rust: tree-sitter-rust plus our resolver, with crate roots from `cargo metadata --no-deps --offline` or `Cargo.toml`. C: tree-sitter-c `#include` scan plus search paths from Makefile `-I` flags and `include/` directories (see `docs/research/import-resolution.md`). Kbuild-aware search paths are deferred until Linux is an Example Repo, since no v1 repo would exercise them. |
-| `parsers/typescript/` | Node (pinned in `.nvmrc`, `package-lock.json`) | `structra-parse-typescript` (TS and JS) | dependency-cruiser pinned with `typescript@5.9.x`, plus the workspace-symlink pre-step. |
+| `parsers/typescript/` | Node (pinned in `.nvmrc`, `package-lock.json`) | `structra-parse-typescript` (TS and JS) | dependency-cruiser pinned with `typescript@6.0.x`, plus the workspace-symlink pre-step. |
 
 All three Python-hosted CLIs share one uv project: one Graph File writer, one file-scoping module, one CLI layer. The existing top-level `python/` directory moves into `parsers/python/`. pydeps is dropped. grimp is a test-only oracle.
 

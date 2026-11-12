@@ -3,7 +3,7 @@
 The Node project behind `structra-parse-typescript`, the Parser for TypeScript and JavaScript. The CLI contract, the in-scope rules and the exit codes are in `docs/adr/0003-parser-architecture.md`. The Graph File rules are in `schema/README.md`.
 
 ```sh
-pnpm install                                        # at the repo root; pinned Node (.nvmrc): dependency-cruiser and typescript 5.9
+pnpm install                                        # at the repo root; pinned Node (.nvmrc): dependency-cruiser and typescript 6.0
 node src/cli.ts PATH -o out.graph.json [--exclude GLOB]...
 pnpm test                                       # conformance fixtures, CLI contract, writer
 pnpm run typecheck
@@ -20,7 +20,7 @@ The sources are TypeScript that Node runs directly (type stripping, Node 22.18 o
 - `src/workspaces.ts`: the workspace-symlink pre-step. Workspace packages (root `package.json` `workspaces`, `pnpm-workspace.yaml`) are linked by name into a temporary `node_modules` outside the checkout, so the checkout is never written to.
 - `src/buildOutput.ts`: maps workspace package entries that point at build output (`dist/…`) back to their sources.
 
-dependency-cruiser is pinned together with `typescript@5.9.x`: with TypeScript 7 it silently skips TypeScript files (see `docs/research/import-resolution.md`).
+dependency-cruiser is pinned together with `typescript@6.0.x`: TypeScript 7 drops the JS compiler API this parser uses, and dependency-cruiser silently skips TypeScript files with it (see `docs/research/import-resolution.md`).
 
 ## Conformance fixtures
 
