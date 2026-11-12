@@ -7,6 +7,11 @@ updates:
     # Matches pnpm-workspace.yaml `minimumReleaseAge: 1440` (24 h).
     cooldown:
       default-days: 1
+    # TypeScript 7 drops the in-process JS compiler API (`ts.sys`, `resolveModuleName`, ...)
+    # that parsers/typescript relies on. See docs/research/import-resolution.md.
+    ignore:
+      - dependency-name: typescript
+        update-types: [version-update:semver-major]
     groups:
       npm-minor-patch:
         update-types: [minor, patch]
