@@ -12,7 +12,7 @@ Planning lives on GitHub Issues in `realJohnDoe/structra`:
 
 ## Model labels
 
-Before creating or labelling a ticket, or opening a PR, follow the [workshop](https://github.com/realJohnDoe/agent-skills) plugin's `issue-conventions` skill. Every ticket, the map included, gets a model label; HITL grilling and prototyping tickets are `opus`.
+Before creating, labelling or ordering a ticket, or opening a PR, follow the [workshop](https://github.com/realJohnDoe/agent-skills) plugin's `issue-conventions` skill. It also covers when to open a PR and adding trace maps to it. Every ticket, the map included, gets a model label; HITL grilling and prototyping tickets are `opus`.
 
 ## Research output
 
@@ -25,10 +25,6 @@ Research findings go in `docs/research/<topic>.md`, and the ticket links to them
 
 When a Wayfinder ticket closes, by either route, add its line to the map's "Decisions so far".
 
-## Trace Map on PRs
-
-Use the `tracemap-pr` skill from [realJohnDoe/tracemap](https://github.com/realJohnDoe/tracemap) (`skills/tracemap-pr/SKILL.md`) on every PR to add trace map images to its description; it decides itself when none would help.
-
 ## Package manager
 
-Use pnpm, never npm or yarn. `parsers/typescript` is a workspace member, so install from the repo root. Dependabot proposes updates; its workflow labels non-major ones `automerge`, and the workshop dispatcher merges them once CI passes.
+Use pnpm, never npm or yarn. `parsers/typescript` is a workspace member, so install from the repo root.
