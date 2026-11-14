@@ -12,7 +12,7 @@ Planning lives on GitHub Issues in `realJohnDoe/structra`:
 
 ## Model labels
 
-Every ticket (and the map) carries exactly one model label that says which Claude model should drive it. These are the [workshop](https://github.com/realJohnDoe/agent-skills)'s labels: it dispatches every unblocked `haiku`, `sonnet` or `opus` ticket to an agent session.
+Every ticket (and the map) carries exactly one model label that says which Claude model should drive it. These are the [workshop](https://github.com/realJohnDoe/agent-skills)'s labels: it dispatches every unblocked `haiku`, `sonnet` or `opus` ticket that also has `ready-for-agent` to an agent session. Only the maintainer adds `ready-for-agent`; never add it yourself.
 
 - `opus`: open-ended reasoning, design decisions, HITL grilling and prototyping, research where judgment matters.
 - `sonnet`: well-scoped work that follows settled decisions.
