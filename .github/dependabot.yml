@@ -28,3 +28,14 @@ updates:
         update-types: [minor, patch]
       actions-major:
         update-types: [major]
+  - package-ecosystem: uv
+    directory: /parsers/python
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 1
+    groups:
+      uv-minor-patch:
+        update-types: [minor, patch]
+      uv-major:
+        update-types: [major]
