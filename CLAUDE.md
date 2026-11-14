@@ -31,4 +31,4 @@ Use the `tracemap-pr` skill from [realJohnDoe/tracemap](https://github.com/realJ
 
 ## Package manager
 
-Use pnpm, never npm or yarn. `parsers/typescript` is a workspace member, so install from the repo root. Dependabot proposes updates; non-major ones auto-merge once CI passes.
+Use pnpm, never npm or yarn. `parsers/typescript` is a workspace member, so install from the repo root. Dependabot proposes updates; its workflow labels non-major ones `automerge`, and the workshop dispatcher merges them once CI passes.
