@@ -18,7 +18,7 @@ Every ticket (and the map) carries exactly one model label that says which Claud
 - `sonnet`: well-scoped work that follows settled decisions.
 - `haiku`: well-specified, mechanical work with a clear done-state (deploy config, deleting code, simple chores).
 
-A ticket a human must decide first also gets `decision-required`. When you create a ticket, always add a model label. When in doubt, use `opus`.
+A ticket a human must decide first says so in a `## Decision needed` section of its body (the question, then the options); there is no label for it. When you create a ticket, always add a model label. When in doubt, use `opus`.
 
 ## Research output
 
