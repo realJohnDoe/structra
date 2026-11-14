@@ -12,7 +12,7 @@ Planning lives on GitHub Issues in `realJohnDoe/structra`:
 
 ## Model labels
 
-Before creating, labelling or ordering a ticket, or opening a PR, follow the [workshop](https://github.com/realJohnDoe/agent-skills) plugin's `issue-conventions` skill. It also covers when to open a PR and adding trace maps to it. Every ticket, the map included, gets a model label; HITL grilling and prototyping tickets are `opus`.
+Before creating, labelling or ordering a ticket, or opening a PR, follow the [workshop](https://github.com/realJohnDoe/agent-skills) plugin's `conventions` skill. It also covers when to open a PR and adding trace maps to it. Every ticket, the map included, gets a model label; HITL grilling and prototyping tickets are `opus`.
 
 ## Research output
 
