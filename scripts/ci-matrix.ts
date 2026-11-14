@@ -102,7 +102,7 @@ if (import.meta.main) {
     result = select(list, null, new Set())
   } else if (args.length === 2 && args[0] === '--base' && !args[1].startsWith('-')) {
     const changed = git('diff', '--name-only', `${args[1]}...HEAD`).split('\n').filter(Boolean)
-    let entries = new Set<string>()
+    let entries: Set<string>
     try {
       entries = changedEntries(parseList(git('show', `${args[1]}:examples/repos.toml`)), list)
     } catch {

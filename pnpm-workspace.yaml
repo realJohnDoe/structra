@@ -6,3 +6,12 @@ packages:
 # Refuse package versions published less than 24 h ago (the pnpm 11 default,
 # stated here so Dependabot's cooldown visibly matches it).
 minimumReleaseAge: 1440
+
+# Accepted audit advisories.
+# GHSA-g3hv-75wg-m249 (moderate): minimatch <11.0.1 glob-pattern DoS. Lint-time
+# only (eslint, typescript-eslint), fed patterns we author. eslint itself still
+# declares minimatch ^10. Drop once `npm view eslint@latest dependencies.minimatch`
+# allows 11.
+auditConfig:
+  ignoreGhsas:
+    - GHSA-g3hv-75wg-m249
