@@ -12,13 +12,7 @@ Planning lives on GitHub Issues in `realJohnDoe/structra`:
 
 ## Model labels
 
-Every ticket (and the map) carries exactly one model label that says which Claude model should drive it. These are the [workshop](https://github.com/realJohnDoe/agent-skills)'s labels: it dispatches every unblocked `haiku`, `sonnet` or `opus` ticket to an agent session.
-
-- `opus`: open-ended reasoning, design decisions, HITL grilling and prototyping, research where judgment matters.
-- `sonnet`: well-scoped work that follows settled decisions.
-- `haiku`: well-specified, mechanical work with a clear done-state (deploy config, deleting code, simple chores).
-
-A ticket a human must decide first also gets `decision-required`. When you create a ticket, always add a model label. When in doubt, use `opus`.
+Before creating or labelling a ticket, or opening a PR, follow the [workshop](https://github.com/realJohnDoe/agent-skills) plugin's `issue-conventions` skill. Every ticket, the map included, gets a model label; HITL grilling and prototyping tickets are `opus`.
 
 ## Research output
 
