@@ -6,9 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
 concurrency:
   group: pages
@@ -18,7 +16,7 @@ jobs:
   e2e:
     uses: ./.github/workflows/e2e.yml
 
-  build:
+  deploy:
     needs: e2e
     runs-on: ubuntu-latest
     steps:
@@ -30,16 +28,10 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm run build
-      - uses: actions/upload-pages-artifact@v5
+      # Branch mode: clean-exclude keeps the PR previews that preview.yml
+      # keeps under pr-preview/ on the same branch.
+      - uses: JamesIves/github-pages-deploy-action@fa24774553152dd7873cd16ebd8d959b010c5445 # v4.9.0
         with:
-          path: dist
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v5
+          folder: dist
+          branch: gh-pages
+          clean-exclude: pr-preview/
