@@ -28,3 +28,7 @@ When a Wayfinder ticket closes, by either route, add its line to the map's "Deci
 ## Package manager
 
 Use pnpm, never npm or yarn. `parsers/typescript` is a workspace member, so install from the repo root.
+
+## Before pushing
+
+Run the checks CI runs: `pnpm run lint`, `pnpm --dir parsers/typescript run typecheck`, `uv run --project parsers/python --frozen ty check parsers/python`, `pnpm test`, `pnpm run build`, `uv run --project parsers/python --frozen pytest`, `pnpm --dir parsers/typescript test`, and `pnpm run test:e2e` (set `CHROME=/opt/pw-browsers/chromium` to use the sandbox's installed Chromium).
