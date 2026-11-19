@@ -1,6 +1,8 @@
 import { buildDendrogram, type Dendrogram } from './dendrogram.ts'
 import { serializeGraphFile, type GraphFile } from './graphFile.ts'
-import { sweep, type OptimalFile, type OptimalGroup } from './sweep.ts'
+import { sha256Hex } from './hash.ts'
+import { sweep } from './sweep.ts'
+import type { OptimalFile, OptimalGroup } from './tree.ts'
 
 /** λ runs from 0.00 to 1.00 in 101 steps; step s is λ = s / 100. */
 export const STEPS = 101
@@ -17,9 +19,7 @@ export interface DendrogramArtifact {
 }
 
 export async function hashGraphFile(graph: GraphFile): Promise<string> {
-  const bytes = new TextEncoder().encode(serializeGraphFile(graph))
-  const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))
-  return `sha256:${Array.from(digest, (b) => b.toString(16).padStart(2, '0')).join('')}`
+  return `sha256:${await sha256Hex(serializeGraphFile(graph))}`
 }
 
 /** Builds the dendrogram and runs the sweep. Deterministic: no randomness, stable tie-breaks. */

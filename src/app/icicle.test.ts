@@ -7,7 +7,7 @@ import type { GraphFile } from '../core/graphFile.ts'
 import { createGroupStats } from '../core/groupStats.ts'
 import { scoreTree } from '../core/scoreTree.ts'
 import { snapshot } from '../core/snapshot.ts'
-import type { OptimalGroup } from '../core/sweep.ts'
+import { isGroup, type OptimalGroup } from '../core/tree.ts'
 import { folderCounts } from './folders.ts'
 import {
   colourTree,
@@ -120,7 +120,7 @@ describe('icicle layout', () => {
     const graph: GraphFile = JSON.parse(flaskGraph)
     const artifact = parseArtifact(flaskDendrogram)
     const stats = createGroupStats(artifact, graph)
-    const canonical = (t: TreeNode): string => ('children' in t ? `(${t.children.map(canonical).join(' ')})` : String(t.index))
+    const canonical = (t: TreeNode): string => (isGroup(t) ? `(${t.children.map(canonical).join(' ')})` : String(t.index))
     for (const step of [30, 45, 60, 100]) {
       const tree = treeAt(artifact, graph, step)
       const before = { tree: canonical(tree), cost: scoreTree(tree, graph, step / 100).total }

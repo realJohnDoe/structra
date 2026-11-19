@@ -2,7 +2,7 @@ import { parse } from 'smol-toml'
 import repoList from '../../examples/repos.toml?raw'
 import { parseArtifact, treeAt, type DendrogramArtifact } from '../core/artifact.ts'
 import type { GraphFile } from '../core/graphFile.ts'
-import type { OptimalGroup } from '../core/sweep.ts'
+import type { OptimalGroup } from '../core/tree.ts'
 
 export interface LoadedRepo {
   /** The menu title: `owner/name` for an Example Repo or an uploaded Graph File. */

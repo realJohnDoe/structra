@@ -1,5 +1,5 @@
 import { fileLabel } from '../core/groupStats.ts'
-import type { OptimalFile, OptimalGroup } from '../core/sweep.ts'
+import { isGroup, type OptimalFile, type OptimalGroup } from '../core/tree.ts'
 import { bucketByFolder, sizeText, type Folder, type FolderCounts } from './folders.ts'
 
 export const ROWS = 4
@@ -10,8 +10,6 @@ export const FILE_MIN = 12
 export const GROUP_MIN = 6
 
 export type TreeNode = OptimalGroup | OptimalFile
-
-export const isGroup = (t: TreeNode): t is OptimalGroup => 'children' in t
 
 /** A node's key, unique within one tree: groups by dendrogram id, files by index. */
 export const keyOf = (t: TreeNode) => (isGroup(t) ? `g${t.id}` : `f${t.index}`)

@@ -10,8 +10,8 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { buildArtifact, treeAt } from '../src/core/artifact.ts'
 import type { GraphFile } from '../src/core/graphFile.ts'
-import type { OptimalGroup } from '../src/core/sweep.ts'
-import { isGroup, type TreeNode } from '../src/app/icicle.ts'
+import { isGroup, type OptimalGroup } from '../src/core/tree.ts'
+import type { TreeNode } from '../src/app/icicle.ts'
 import { lambdaOf } from '../src/app/url.ts'
 
 /** The λ step drawn: 0.80, where the toy splits into three groups. */

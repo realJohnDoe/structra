@@ -1,13 +1,10 @@
-import type { OptimalFile } from '../core/sweep.ts'
+import { commonFolder, folderOf, type OptimalFile } from '../core/tree.ts'
 
 /** How many of the repo's files sit directly in each folder, and anywhere under it ('' is the repo root). */
 export interface FolderCounts {
   direct: Map<string, number>
   under: Map<string, number>
 }
-
-/** A path's folder ('' for the repo root). */
-export const folderOf = (path: string) => path.split('/').slice(0, -1).join('/')
 
 /** Counts the repo's files per folder, directly in it and anywhere under it. */
 export function folderCounts(paths: string[]): FolderCounts {
@@ -59,14 +56,7 @@ export function bucketByFolder(files: OptimalFile[], prefix: string, counts: Fol
   }
   const out: Folder[] = []
   for (const here of buckets.values()) {
-    const dirs = here.map((f) => folderOf(f.file).split('/'))
-    let common = dirs[0].length
-    for (const d of dirs) {
-      let j = 0
-      while (j < common && j < d.length && d[j] === dirs[0][j]) j++
-      common = j
-    }
-    const dir = dirs[0].slice(0, common).join('/')
+    const dir = commonFolder(here.map((f) => f.file))
     const direct = here.every((f) => folderOf(f.file) === dir)
     const rel =
       dir === '' ? '(repo root)' : prefix === '' ? dir : dir.startsWith(prefix + '/') ? dir.slice(prefix.length + 1) : dir.split('/').pop()!

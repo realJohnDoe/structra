@@ -1,5 +1,5 @@
 import { useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
-import type { OptimalGroup } from '../core/sweep.ts'
+import type { OptimalGroup } from '../core/tree.ts'
 import {
   colourOf,
   isDisplayOnly,
@@ -13,7 +13,8 @@ import {
   type Item,
   type LayoutContext,
 } from './icicle.ts'
-import { importLines, type Adjacency, type ImportLine } from './imports.ts'
+import type { Adjacency } from '../core/adjacency.ts'
+import { importLines, type ImportLine } from './imports.ts'
 
 interface Props {
   zoom: OptimalGroup
