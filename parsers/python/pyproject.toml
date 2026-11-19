@@ -16,7 +16,12 @@ structra-parse-rust = "structra_parsers.rust:main"
 structra-parse-c = "structra_parsers.c:main"
 
 [dependency-groups]
-dev = ["pytest", "grimp", "jsonschema"]
+dev = [
+    "pytest",
+    "grimp",
+    "jsonschema",
+    "ty>=0.0.107",
+]
 
 [build-system]
 requires = ["hatchling"]
