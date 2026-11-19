@@ -50,7 +50,7 @@ structra-parse-<language> [PATH] [-o FILE] [--exclude GLOB]...
 - Each toolchain has a conformance suite of fixture repos with committed expected Graph Files, byte-compared in CI.
 - The Example Repo Graph Files are byte-compared end to end.
 
-The serialization rules (key order, sorting, LF, trailing newline, one entry per line) are written once in the schema's README and implemented twice: once in Python, once in TypeScript.
+The serialization rules (key order, sorting, LF, trailing newline, one entry per line) are written once in the schema's README and implemented three times: once in Python, once in the TypeScript Parser, and once in the app's writer, `serializeGraphFile` in `src/core/graphFile.ts`.
 
 **CI:** every toolchain pins itself in-tree: `.python-version` and `uv.lock`, `.nvmrc` and `package-lock.json`, plus tree-sitter grammar versions in the lockfile. CI installs them with the standard setup actions (setup-uv, setup-node), with caching. It only sets up a toolchain when that toolchain's files, its fixtures, or its Example Repos changed.
 
@@ -63,6 +63,6 @@ The serialization rules (key order, sorting, LF, trailing newline, one entry per
 
 ## Consequences
 
-- Two writers can drift apart. The conformance fixtures are the guard, so each toolchain needs a fixture that covers the writer's edge cases: an empty graph, a file without edges, non-ASCII paths, and paths that differ only in case.
+- Three writers can drift apart: the two Parsers' and the app's. The conformance fixtures are the guard, so each toolchain needs a fixture that covers the writer's edge cases: an empty graph, a file without edges, non-ASCII paths, and paths that differ only in case. The app's writer and validator are checked against every Parser fixture by `src/core/graphFile.test.ts`.
 - The workspace-symlink pre-step of the TS Parser must not modify the checkout so that the next run sees a dirty tree. It writes only to ignored paths (`node_modules/`), or works in a temporary copy.
 - `data/*.dot` and `python/scripts/generate_dot.py` were superseded and have been removed.
