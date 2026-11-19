@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import toyText from '../../examples/toy.graph.json?raw'
-import { serializeGraphFile, validateGraphFile } from './graphFile.ts'
+import { serializeGraphFile } from './graphFile.ts'
+import { validateGraphFile } from './validateGraphFile.ts'
 
 const toy = () => JSON.parse(toyText)
 

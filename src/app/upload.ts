@@ -1,5 +1,6 @@
 import { buildArtifact } from '../core/artifact.ts'
-import { validateGraphFile, type GraphFile } from '../core/graphFile.ts'
+import type { GraphFile } from '../core/graphFile.ts'
+import { validateGraphFile } from '../core/validateGraphFile.ts'
 import { repoTitle, withTrees, type LoadedRepo } from './examples.ts'
 
 export type UploadReading =
