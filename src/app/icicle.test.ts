@@ -116,7 +116,7 @@ describe('icicle layout', () => {
     expect(labelOf(resolveOpened(later.root, more, later.ctx)!, later.ctx)).toBe('+2 more')
   })
 
-  it('never changes the tree, its Total Cost or the snapshot, with Folder Blocks on or off', async () => {
+  it('never changes the tree, its Total Cost or the snapshot, with Folder Blocks laid out', async () => {
     const graph: GraphFile = JSON.parse(flaskGraph)
     const artifact = parseArtifact(flaskDendrogram)
     const stats = createGroupStats(artifact, graph)
@@ -124,18 +124,15 @@ describe('icicle layout', () => {
     for (const step of [30, 45, 60, 100]) {
       const tree = treeAt(artifact, graph, step)
       const before = { tree: canonical(tree), cost: scoreTree(tree, graph, step / 100).total }
-      for (const folderBlocks of [true, false]) {
-        const ctx: LayoutContext = {
-          label: (g, p) => stats.label(g.id, p?.id ?? null),
-          folder: (g) => stats.of(g.id).folder,
-          counts: folderCounts(graph.nodes),
-          folderBlocks,
-        }
-        const blocks = blocksOf(layoutView(tree, null, null, 358, ctx))
-        for (const b of blocks)
-          if (b.item.kind === 'more' || b.item.kind === 'folder') layoutView(b.item.owner, null, b.item, 358, ctx)
-        colourTree(tree, ctx)
+      const ctx: LayoutContext = {
+        label: (g, p) => stats.label(g.id, p?.id ?? null),
+        folder: (g) => stats.of(g.id).folder,
+        counts: folderCounts(graph.nodes),
       }
+      const blocks = blocksOf(layoutView(tree, null, null, 358, ctx))
+      for (const b of blocks)
+        if (b.item.kind === 'more' || b.item.kind === 'folder') layoutView(b.item.owner, null, b.item, 358, ctx)
+      colourTree(tree, ctx)
       expect({ tree: canonical(tree), cost: scoreTree(tree, graph, step / 100).total }).toEqual(before)
     }
     // The committed 101-step snapshot still holds after all that layout.

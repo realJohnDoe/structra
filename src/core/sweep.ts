@@ -102,10 +102,10 @@ export class Contraction {
     return this.surv[x] === 1
   }
 
-  /** Splits a contracted node off its parent group, or merges a surviving one into it. */
+  /** Splits a contracted node off its parent group. Splits only: a node that survives stays so. */
   toggle(x: number) {
-    if (x < this.n || x === this.root) throw new Error(`Contraction: node ${x} can't be toggled`)
-    this.surv[x] ^= 1
+    if (x < this.n || x === this.root || this.surv[x]) throw new Error(`Contraction: node ${x} can't be toggled`)
+    this.surv[x] = 1
     this.stale = true
   }
 
@@ -139,8 +139,9 @@ export class Contraction {
     }
   }
 
-  /** The closed-form change in Total Cost at λ if `x` were toggled. */
+  /** The closed-form change in Total Cost at λ if `x`, which must not survive, were split off. */
   delta(x: number, lambda: number): number {
+    if (this.surv[x]) throw new Error(`Contraction: node ${x} already survives`)
     this.refresh()
     const a = this.E ? lambda / this.E : 0
     const b = (1 - lambda) / this.n
@@ -149,12 +150,6 @@ export class Contraction {
     const Xp = this.cut[p] + this.I[p] - this.bs[p]
     const kx = this.bk[x]
     const Xx = this.cut[x] + this.I[x] - this.bs[x]
-    if (this.surv[x]) {
-      // Merge x into p: p takes over x's children and the edges whose LCA is x.
-      const kp2 = kp + kx - 1
-      const Xp2 = Xp + this.I[x] - this.bs[x]
-      return a * (Xp2 * Math.log(kp2) - Xp * Math.log(kp) - Xx * Math.log(kx)) + b * (Math.log(kp2) - Math.log(kp) - Math.log(kx))
-    }
     // Split x off p: x's would-be children leave p, x joins it.
     const kp2 = kp - kx + 1
     const Xp2 = Xp + this.bs[x] - this.I[x]
