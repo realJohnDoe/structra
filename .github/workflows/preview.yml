@@ -23,8 +23,8 @@ jobs:
     if: github.event.action != 'labeled' || github.event.label.name == 'preview'
     runs-on: ubuntu-latest
     steps:
+      # No `if:` here: the action's cleanup on `closed` needs a git checkout.
       - uses: actions/checkout@v7
-        if: github.event.action != 'closed'
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
         if: github.event.action != 'closed'
       - uses: actions/setup-node@v7
