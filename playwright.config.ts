@@ -8,6 +8,8 @@ export default defineConfig({
   use: {
     baseURL: 'http://localhost:4173/structra/',
     trace: 'off',
+    // Unset (the default) uses Playwright's pinned Chromium; CI does not set CHROME.
+    launchOptions: { executablePath: process.env.CHROME },
   },
   webServer: {
     command: 'pnpm run build && pnpm exec vite preview --port 4173 --strictPort',
