@@ -31,4 +31,4 @@ Use pnpm, never npm or yarn. `parsers/typescript` is a workspace member, so inst
 
 ## Before pushing
 
-Run the checks CI runs: `pnpm run lint`, `pnpm --dir parsers/typescript run typecheck`, `uv run --project parsers/python --frozen ty check parsers/python`, `pnpm test`, `pnpm run build`, `uv run --project parsers/python --frozen pytest`, `pnpm --dir parsers/typescript test`, and `pnpm run test:e2e` (set `CHROME=/opt/pw-browsers/chromium` to use the sandbox's installed Chromium).
+The gate command is `pnpm run check`: every check CI runs except the Example Repo jobs and the dendrogram byte-compare, which run only in CI. In the sandbox, set `CHROME=/opt/pw-browsers/chromium` so e2e uses the installed Chromium.
