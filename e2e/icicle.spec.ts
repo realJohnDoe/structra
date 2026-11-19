@@ -1,4 +1,11 @@
 import { expect, test } from '@playwright/test'
+import { existsSync, readFileSync } from 'node:fs'
+import { parse } from 'smol-toml'
+
+// The menu's expected titles, derived from the Example Repo List the way src/app/examples.ts lists them.
+const exampleRepoTitles = (parse(readFileSync('examples/repos.toml', 'utf8')) as { repo: { name: string; url: string }[] }).repo
+  .filter((r) => existsSync(`examples/${r.name}.graph.json`) && existsSync(`examples/${r.name}.dendrogram.json`))
+  .map((r) => new URL(r.url).pathname.replace(/^\/|\/$/g, ''))
 
 test('the first visit shows flask at λ 0.45, rooted at "All 83 files"', async ({ page }) => {
   await page.goto('./')
@@ -9,20 +16,10 @@ test('the first visit shows flask at λ 0.45, rooted at "All 83 files"', async (
 
 test('the repo menu lists the Example Repos as owner/name, in Example Repo List order', async ({ page }) => {
   await page.goto('./')
-  await expect(page.getByRole('combobox', { name: 'Example Repo' }).getByRole('option')).toHaveText([
-    'pallets/flask',
-    'psf/requests',
-    'numpy/numpy',
-    'django/django',
-    'expressjs/express',
-    'vitejs/vite',
-    'facebook/react',
-    'BurntSushi/ripgrep',
-    'tokio-rs/tokio',
-    'redis/redis',
-    'git/git',
-    'Your own Graph File…',
-  ])
+  const options = page.getByRole('combobox', { name: 'Example Repo' }).getByRole('option')
+  // Hand-written, so an empty or misparsed list still fails: the full check below derives from repos.toml.
+  await expect(options.first()).toHaveText('pallets/flask')
+  await expect(options).toHaveText([...exampleRepoTitles, 'Your own Graph File…'])
 })
 
 test('dragging the λ slider changes the summary', async ({ page }) => {
