@@ -5,6 +5,13 @@ import { validateGraphFile } from './validateGraphFile.ts'
 
 const toy = () => JSON.parse(toyText)
 
+// The conformance fixtures every Parser's writer is byte-compared against (ADR 0003).
+const conformance = import.meta.glob<string>('../../parsers/*/fixtures/*/expected.graph.json', {
+  query: '?raw',
+  import: 'default',
+  eager: true,
+})
+
 describe('validateGraphFile', () => {
   it('accepts the toy Graph File', () => {
     expect(validateGraphFile(toy())).toEqual({ ok: true, graph: toy() })
@@ -95,4 +102,20 @@ describe('serializeGraphFile', () => {
     const shuffled = { edges: g.edges, nodes: g.nodes, meta: { parser: g.meta.parser, language: g.meta.language, commit: g.meta.commit, repo: g.meta.repo } }
     expect(serializeGraphFile(shuffled)).toBe(toyText)
   })
+})
+
+describe('conformance fixtures', () => {
+  it('finds the parsers\' fixtures', () => {
+    expect(Object.keys(conformance).length).toBeGreaterThan(0)
+  })
+
+  for (const [path, text] of Object.entries(conformance)) {
+    const name = path.replace(/^(\.\.\/)+parsers\//, '')
+    it(`validates and reproduces ${name} byte for byte`, () => {
+      const json = JSON.parse(text)
+      const r = validateGraphFile(json)
+      expect(r.ok ? '' : r.errors.join('\n')).toBe('')
+      expect(serializeGraphFile(json)).toBe(text)
+    })
+  }
 })

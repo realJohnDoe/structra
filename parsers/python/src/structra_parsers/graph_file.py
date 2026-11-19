@@ -1,5 +1,5 @@
 """The Python Graph File writer. The rules are in schema/README.md; the
-TypeScript writer is serializeGraphFile in src/core/graphFile.ts."""
+TypeScript Parser's writer is parsers/typescript/src/graphFile.ts."""
 
 import json
 from collections.abc import Iterable
