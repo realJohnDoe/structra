@@ -70,3 +70,13 @@ test('a file that is not JSON is rejected the same way', async ({ page }) => {
   await expect(page.getByRole('alert')).toContainText('not a valid Graph File')
   await expect(root(page)).toHaveAccessibleName('All 37 files')
 })
+
+test('a failed Example Repo load says so and keeps the menu on the repo still shown', async ({ page }) => {
+  await page.route(/django\.(graph|dendrogram)-.*\.js/, (r) => r.abort())
+  await menu(page).selectOption({ label: 'django/django' })
+
+  await expect(page.getByRole('alert')).toContainText('django/django')
+  await expect(menu(page).locator('option:checked')).toHaveText('psf/requests')
+  await expect(root(page)).toHaveAccessibleName('All 37 files')
+  await expect(page).toHaveURL(/\?repo=requests/)
+})

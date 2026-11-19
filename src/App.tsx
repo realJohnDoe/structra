@@ -24,7 +24,6 @@ import {
 import { Icicle, IN_COLOUR, OUT_COLOUR } from './app/Icicle.tsx'
 import { adjacency } from './app/imports.ts'
 import { summarize } from './app/summary.ts'
-import type { UploadReading } from './app/upload.ts'
 import { lambdaOf, readViewState, viewStateSearch } from './app/url.ts'
 import { STEPS } from './core/artifact.ts'
 import { createGroupStats } from './core/groupStats.ts'
@@ -37,6 +36,8 @@ const UPLOADED = ':uploaded'
 /** Resolves after the browser has painted, so a loading state shows before a long synchronous build. */
 const afterPaint = () => new Promise<void>((resolve) => requestAnimationFrame(() => setTimeout(resolve)))
 
+const errorText = (e: unknown) => (e instanceof Error ? e.message : String(e))
+
 export default function App() {
   const [initial] = useState(() => readViewState(window.location.search, exampleRepos))
   /** The Example Repo chosen in the menu, or null once an uploaded Graph File is shown. */
@@ -45,11 +46,14 @@ export default function App() {
   const [repo, setRepo] = useState<LoadedRepo | null>(null)
   /** The uploaded Graph File being built, by file name. */
   const [building, setBuilding] = useState<string | null>(null)
-  const [uploadError, setUploadError] = useState<(Extract<UploadReading, { ok: false }> & { file: string }) | null>(null)
+  /** Why the last upload or Example Repo load failed, shown in the error banner. */
+  const [uploadError, setUploadError] = useState<{ file: string; message: string; details: string[] } | null>(null)
   const [dragging, setDragging] = useState(false)
   const fileInput = useRef<HTMLInputElement>(null)
   /** Counts loads, so only the latest one started is shown. */
   const loads = useRef(0)
+  /** The repo menu value of the repo on screen: an Example Repo's name, or null for an uploaded file. */
+  const shown = useRef<string | null>(initial.repo)
   /** Dendrogram ids of the groups zoomed through, root first; resolved against each step's tree. */
   const [zoomIds, setZoomIds] = useState<number[]>([])
   /** The selected item, as tapped; re-read against each step's tree. */
@@ -57,8 +61,9 @@ export default function App() {
   /** The display-only block opened in its owner group, if any. */
   const [opened, setOpened] = useState<DisplayItem | null>(null)
 
-  const show = (load: number, r: LoadedRepo) => {
+  const show = (load: number, r: LoadedRepo, name: string | null) => {
     if (load !== loads.current) return
+    shown.current = name
     setRepo(r)
     setZoomIds([])
     setSelected(null)
@@ -70,12 +75,25 @@ export default function App() {
     setRepoName(name)
     setBuilding(null)
     setUploadError(null)
-    loadExampleRepo(name).then((r) => show(load, r))
+    loadExampleRepo(name).then(
+      (r) => show(load, r, name),
+      (e) => {
+        if (load !== loads.current) return
+        setRepoName(shown.current) // the menu goes back to the repo still on screen
+        setUploadError({ file: exampleRepoTitle(name), message: `Could not load this Example Repo: ${errorText(e)}`, details: [] })
+      },
+    )
   }
 
   useEffect(() => {
     const load = ++loads.current
-    loadExampleRepo(initial.repo).then((r) => show(load, r))
+    loadExampleRepo(initial.repo).then(
+      (r) => show(load, r, initial.repo),
+      (e) => {
+        if (load !== loads.current) return
+        setUploadError({ file: exampleRepoTitle(initial.repo), message: `Could not load this Example Repo: ${errorText(e)}`, details: [] })
+      },
+    )
   }, [initial])
 
   // An invalid file leaves the shown repo in place; a valid one is built here, as offline, then shown.
@@ -91,11 +109,18 @@ export default function App() {
       setBuilding(null)
       return setUploadError({ ...reading, file: file.name })
     }
-    const r = await buildUploadedRepo(reading.graph)
+    let r: LoadedRepo
+    try {
+      r = await buildUploadedRepo(reading.graph)
+    } catch (e) {
+      if (load !== loads.current) return
+      setBuilding(null)
+      return setUploadError({ file: file.name, message: `Could not build this Graph File: ${errorText(e)}`, details: [] })
+    }
     if (load !== loads.current) return
     setBuilding(null)
     setRepoName(null)
-    show(load, r)
+    show(load, r, null)
   }
 
   // Dropping a file anywhere on the page uploads it.
