@@ -24,7 +24,6 @@ import {
 import { Icicle, IN_COLOUR, OUT_COLOUR } from './app/Icicle.tsx'
 import { adjacency } from './app/imports.ts'
 import { summarize } from './app/summary.ts'
-import { buildUploadedRepo, readGraphFile } from './app/upload.ts'
 import { lambdaOf, readViewState, viewStateSearch } from './app/url.ts'
 import { STEPS } from './core/artifact.ts'
 import { createGroupStats } from './core/groupStats.ts'
@@ -102,6 +101,7 @@ export default function App() {
     const load = ++loads.current
     setUploadError(null)
     setBuilding(file.name)
+    const { buildUploadedRepo, readGraphFile } = await import('./app/upload.ts')
     await afterPaint()
     const reading = readGraphFile(await file.text())
     if (load !== loads.current) return // another repo or file was chosen meanwhile

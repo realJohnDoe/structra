@@ -7,7 +7,7 @@
 import { readFileSync, writeFileSync } from 'node:fs'
 import { basename, dirname, join } from 'node:path'
 import { buildArtifact, serializeArtifact } from '../src/core/artifact.ts'
-import { validateGraphFile } from '../src/core/graphFile.ts'
+import { validateGraphFile } from '../src/core/validateGraphFile.ts'
 import { serializeSnapshot, snapshot } from '../src/core/snapshot.ts'
 
 const usage = 'usage: structra-dendrogram <name>.graph.json... [--out-dir DIR]'
