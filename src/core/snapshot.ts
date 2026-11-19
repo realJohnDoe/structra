@@ -1,7 +1,8 @@
 import { STEPS, treeAt, type DendrogramArtifact } from './artifact.ts'
 import type { GraphFile } from './graphFile.ts'
 import { scoreTree } from './scoreTree.ts'
-import type { OptimalFile, OptimalGroup } from './sweep.ts'
+import { sha256Hex } from './hash.ts'
+import { isGroup, type OptimalFile, type OptimalGroup } from './tree.ts'
 
 export interface SnapshotStep {
   /** λ with two decimals, as the slider and URLs name it. */
@@ -16,15 +17,10 @@ export interface SnapshotStep {
 
 /** A tree's canonical form: files by index, groups in parentheses, children in tree order. */
 const canonical = (t: OptimalGroup | OptimalFile): string =>
-  'children' in t ? `(${t.children.map(canonical).join(' ')})` : String(t.index)
-
-async function sha256(text: string): Promise<string> {
-  const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text)))
-  return Array.from(digest, (b) => b.toString(16).padStart(2, '0')).join('')
-}
+  isGroup(t) ? `(${t.children.map(canonical).join(' ')})` : String(t.index)
 
 const countGroups = (t: OptimalGroup): number =>
-  1 + t.children.reduce((sum, c) => sum + ('children' in c ? countGroups(c) : 0), 0)
+  1 + t.children.reduce((sum, c) => sum + (isGroup(c) ? countGroups(c) : 0), 0)
 
 /** One line per λ step summarizing the Optimal Tree drawn there. */
 export async function snapshot(artifact: DendrogramArtifact, graph: GraphFile): Promise<SnapshotStep[]> {
@@ -36,7 +32,7 @@ export async function snapshot(artifact: DendrogramArtifact, graph: GraphFile): 
       lambda: lambda.toFixed(2),
       groups: countGroups(tree),
       total: Number(scoreTree(tree, graph, lambda).total.toFixed(9)),
-      tree: (await sha256(canonical(tree))).slice(0, 16),
+      tree: (await sha256Hex(canonical(tree))).slice(0, 16),
     })
   }
   return steps

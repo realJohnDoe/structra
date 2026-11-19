@@ -1,4 +1,4 @@
-import type { OptimalGroup } from '../core/sweep.ts'
+import { commonFolder, isGroup, type OptimalGroup } from '../core/tree.ts'
 import { folderCounts } from './folders.ts'
 import type { LayoutContext, TreeNode } from './icicle.ts'
 
@@ -12,21 +12,15 @@ function build(spec: Spec, paths: string[]): TreeNode {
   const [id, ...children] = spec
   return { id, children: children.map((c) => build(c, paths)) }
 }
-const allFiles = (t: TreeNode): string[] => ('children' in t ? t.children.flatMap(allFiles) : [t.file])
+const allFiles = (t: TreeNode): string[] => (isGroup(t) ? t.children.flatMap(allFiles) : [t.file])
 
 /** Builds a tree from `spec`, with a layout context that labels groups `G<id>` and the root `All`. */
 export function setup(spec: Spec, extraPaths: string[] = []) {
   const paths: string[] = []
   const root = build(spec, paths) as OptimalGroup
-  const common = (g: OptimalGroup) => {
-    const dirs = allFiles(g).map((f) => f.split('/').slice(0, -1))
-    let n = dirs[0].length
-    for (const d of dirs) while (d.slice(0, n).join('/') !== dirs[0].slice(0, n).join('/')) n--
-    return dirs[0].slice(0, n).join('/')
-  }
   const ctx: LayoutContext = {
     label: (g, parent) => (parent ? `G${g.id}` : 'All'),
-    folder: common,
+    folder: (g) => commonFolder(allFiles(g)),
     counts: folderCounts([...paths, ...extraPaths]),
   }
   return { root, ctx }

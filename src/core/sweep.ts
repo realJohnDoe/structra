@@ -1,16 +1,6 @@
 import { rootOf, type Dendrogram } from './dendrogram.ts'
 import type { GraphFile } from './graphFile.ts'
-import type { TreeFile, TreeGroup } from './tree.ts'
-
-/** A group of an Optimal Tree: a surviving dendrogram node. */
-export interface OptimalGroup extends TreeGroup {
-  id: number
-  children: (OptimalGroup | OptimalFile)[]
-}
-
-export interface OptimalFile extends TreeFile {
-  index: number
-}
+import type { OptimalGroup } from './tree.ts'
 
 /**
  * A contraction of a dendrogram: the set of internal nodes that survive. The root

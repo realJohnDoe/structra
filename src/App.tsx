@@ -6,7 +6,6 @@ import {
   colourTree,
   FILE_COLOUR,
   isDisplayOnly,
-  isGroup,
   itemOf,
   keyOf,
   labelOf,
@@ -22,12 +21,12 @@ import {
   type TreeNode,
 } from './app/icicle.ts'
 import { Icicle, IN_COLOUR, OUT_COLOUR } from './app/Icicle.tsx'
-import { adjacency } from './app/imports.ts'
+import { adjacency } from './core/adjacency.ts'
 import { summarize } from './app/summary.ts'
 import { lambdaOf, readViewState, viewStateSearch } from './app/url.ts'
 import { STEPS } from './core/artifact.ts'
 import { createGroupStats } from './core/groupStats.ts'
-import type { OptimalGroup } from './core/sweep.ts'
+import { isGroup, type OptimalGroup } from './core/tree.ts'
 
 /** The repo menu's values for "Your own Graph File…" and for the uploaded one once shown. */
 const UPLOAD = ':upload'

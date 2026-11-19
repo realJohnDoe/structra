@@ -2,18 +2,18 @@ import fc from 'fast-check'
 import { describe, expect, it } from 'vitest'
 import { buildArtifact, parseArtifact, serializeArtifact, STEPS, treeAt } from './artifact.ts'
 import type { GraphFile } from './graphFile.ts'
-import type { OptimalGroup } from './sweep.ts'
+import { isGroup, type OptimalGroup } from './tree.ts'
 import { arbitraryGraph, cliques, graph } from './testGraphs.ts'
 
 const groups = (t: OptimalGroup): OptimalGroup[] => [
   t,
-  ...t.children.flatMap((c) => ('children' in c ? groups(c) : [])),
+  ...t.children.flatMap((c) => (isGroup(c) ? groups(c) : [])),
 ]
 
-const files = (t: OptimalGroup): string[] => t.children.flatMap((c) => ('children' in c ? files(c) : [c.file]))
+const files = (t: OptimalGroup): string[] => t.children.flatMap((c) => (isGroup(c) ? files(c) : [c.file]))
 
 /** A tree as nested arrays of file paths, for readable assertions. */
-const shape = (t: OptimalGroup): unknown => t.children.map((c) => ('children' in c ? shape(c) : c.file))
+const shape = (t: OptimalGroup): unknown => t.children.map((c) => (isGroup(c) ? shape(c) : c.file))
 
 const steps = Array.from({ length: STEPS }, (_, i) => i)
 const run = { numRuns: 60 }

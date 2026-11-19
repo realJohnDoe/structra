@@ -1,6 +1,4 @@
-import type { OptimalFile, OptimalGroup } from '../core/sweep.ts'
-
-const isGroup = (t: OptimalGroup | OptimalFile): t is OptimalGroup => 'children' in t
+import { isGroup, type OptimalGroup } from '../core/tree.ts'
 
 /** "N groups · depth D": the groups of the Optimal Tree, root included, and its levels of groups. */
 export function summarize(tree: OptimalGroup): string {

@@ -1,15 +1,16 @@
 import { describe, expect, it } from 'vitest'
-import type { OptimalFile, OptimalGroup } from '../core/sweep.ts'
+import { isGroup, type OptimalFile, type OptimalGroup } from '../core/tree.ts'
 import { labelOf, layoutView, type Block, type Item, type LayoutContext, type TreeNode } from './icicle.ts'
-import { adjacency, importLines, type ImportLine } from './imports.ts'
+import { adjacency } from '../core/adjacency.ts'
+import { importLines, type ImportLine } from './imports.ts'
 import { files, setup, type Spec } from './testTrees.ts'
 
-const pathsOf = (t: TreeNode): string[] => ('children' in t ? t.children.flatMap(pathsOf) : [t.file])
+const pathsOf = (t: TreeNode): string[] => (isGroup(t) ? t.children.flatMap(pathsOf) : [t.file])
 const nodes = (root: OptimalGroup) => {
   const all: TreeNode[] = []
   const walk = (t: TreeNode) => {
     all.push(t)
-    if ('children' in t) t.children.forEach(walk)
+    if (isGroup(t)) t.children.forEach(walk)
   }
   walk(root)
   return all
@@ -109,7 +110,7 @@ describe('import lines', () => {
       ['tests/t1.py', 'a/f000.py'],
       ['tests/t2.py', 'a/f001.py'],
     ], 50)
-    const t1 = nodes(root).find((t) => !('children' in t) && t.file === 'tests/t1.py') as OptimalFile
+    const t1 = nodes(root).find((t) => !isGroup(t) && t.file === 'tests/t1.py') as OptimalFile
     const lines = importLines(blocks, adj, { kind: 'file', key: `f${t1.index}`, node: t1, files: 1 })
     expect(describeLines(lines, blocks, ctx)).toEqual(['other a/ – tests/ ×1 @0', 'out tests/ – a/ ×1 @0'])
   })

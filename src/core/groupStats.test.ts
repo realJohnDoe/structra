@@ -3,7 +3,7 @@ import toyText from '../../examples/toy.graph.json?raw'
 import { buildArtifact, treeAt, type DendrogramArtifact } from './artifact.ts'
 import type { GraphFile } from './graphFile.ts'
 import { createGroupStats, fileLabel } from './groupStats.ts'
-import type { OptimalGroup } from './sweep.ts'
+import { isGroup, type OptimalGroup } from './tree.ts'
 
 const toy: GraphFile = JSON.parse(toyText)
 let artifact: DendrogramArtifact
@@ -12,14 +12,14 @@ beforeAll(async () => {
   artifact = await buildArtifact(toy)
 })
 
-const files = (t: OptimalGroup): string[] => t.children.flatMap((c) => ('children' in c ? files(c) : [c.file]))
+const files = (t: OptimalGroup): string[] => t.children.flatMap((c) => (isGroup(c) ? files(c) : [c.file]))
 
 /** The group of the tree at `step` holding exactly these files, and its parent. */
 function find(step: number, wanted: string[]): { group: OptimalGroup; parent: OptimalGroup | null } {
   const key = [...wanted].sort().join('\n')
   const visit = (g: OptimalGroup, parent: OptimalGroup | null): ReturnType<typeof find> | undefined => {
     if (files(g).sort().join('\n') === key) return { group: g, parent }
-    for (const c of g.children) if ('children' in c) {
+    for (const c of g.children) if (isGroup(c)) {
       const hit = visit(c, g)
       if (hit) return hit
     }

@@ -1,5 +1,7 @@
 import type { DendrogramArtifact } from './artifact.ts'
+import { adjacency, importCounts } from './adjacency.ts'
 import type { GraphFile } from './graphFile.ts'
+import { commonFolder } from './tree.ts'
 
 /** What a group shows that depends only on its files, so is the same at every λ step. */
 export interface GroupStats {
@@ -26,8 +28,6 @@ export interface GroupStatsCache {
   label(id: number, parentId: number | null): string
 }
 
-const folderOf = (path: string) => path.split('/').slice(0, -1).join('/')
-
 /** A file's name without extension; package entry files (`__init__.py`, `index.ts`, …) go by their folder. */
 const shortName = (path: string) => {
   const parts = path.replace(/\/(__init__|index|mod|lib)\.\w+$/, '').replace(/\.\w+$/, '').split('/')
@@ -41,15 +41,7 @@ export const fileLabel = (path: string) => path.split('/').slice(-2).join('/')
 export function createGroupStats(artifact: DendrogramArtifact, graph: Pick<GraphFile, 'nodes' | 'edges'>): GroupStatsCache {
   const { n, merges } = artifact.dendrogram
   const paths = graph.nodes
-  const index = new Map(paths.map((p, i) => [p, i]))
-  const out: number[][] = paths.map(() => [])
-  const inn: number[][] = paths.map(() => [])
-  for (const [src, dst] of graph.edges) {
-    const a = index.get(src)!
-    const b = index.get(dst)!
-    out[a].push(b)
-    inn[b].push(a)
-  }
+  const adj = adjacency(graph)
   const isRoot = (id: number) => (n < 2 ? id === n : id === 2 * n - 2)
 
   const filesOf = (id: number): number[] => {
@@ -69,30 +61,10 @@ export function createGroupStats(artifact: DendrogramArtifact, graph: Pick<Graph
     const hit = cache.get(id)
     if (hit) return hit
     const files = filesOf(id)
+    const { within, out: outOf, in: into } = importCounts(files, adj)
     const inside = new Set(files)
-    let within = 0
-    let into = 0
-    let outOf = 0
     const importedFromWithin = new Map<number, number>()
-    for (const f of files) {
-      for (const t of out[f]) {
-        if (inside.has(t)) within++
-        else outOf++
-      }
-      let d = 0
-      for (const s of inn[f]) {
-        if (inside.has(s)) d++
-        else into++
-      }
-      importedFromWithin.set(f, d)
-    }
-    let folder = files.length ? folderOf(paths[files[0]]).split('/') : []
-    for (const f of files) {
-      const parts = folderOf(paths[f]).split('/')
-      let j = 0
-      while (j < folder.length && j < parts.length && parts[j] === folder[j]) j++
-      folder = folder.slice(0, j)
-    }
+    for (const f of files) importedFromWithin.set(f, adj.in[f].filter((s) => inside.has(s)).length)
     // File indices follow path order, so ties break by path.
     const ranked = [...files].sort((a, b) => importedFromWithin.get(b)! - importedFromWithin.get(a)! || a - b)
     const mostImported: string[] = []
@@ -104,7 +76,7 @@ export function createGroupStats(artifact: DendrogramArtifact, graph: Pick<Graph
       names.add(name)
       mostImported.push(paths[f])
     }
-    const stats = { files: files.length, within, in: into, out: outOf, folder: folder.join('/'), mostImported }
+    const stats = { files: files.length, within, in: into, out: outOf, folder: commonFolder(files.map((f) => paths[f])), mostImported }
     cache.set(id, stats)
     return stats
   }

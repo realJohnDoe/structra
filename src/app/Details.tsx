@@ -1,9 +1,10 @@
 import type { GroupStatsCache } from '../core/groupStats.ts'
 import { fileLabel } from '../core/groupStats.ts'
-import type { OptimalGroup } from '../core/sweep.ts'
+import { isGroup, type OptimalGroup } from '../core/tree.ts'
 import { sizeText } from './folders.ts'
-import { childGroups, fileCount, isGroup, keyOf, labelOf, membersOf, type DisplayItem, type Item, type LayoutContext, type TreeNode } from './icicle.ts'
-import { filesOf, importCounts, type Adjacency } from './imports.ts'
+import { childGroups, fileCount, keyOf, labelOf, membersOf, type DisplayItem, type Item, type LayoutContext, type TreeNode } from './icicle.ts'
+import { importCounts, type Adjacency } from '../core/adjacency.ts'
+import { filesOf } from './imports.ts'
 
 /** Lists are cut here, with "… N more" after. */
 const LIST_MAX = 40
