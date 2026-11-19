@@ -160,9 +160,31 @@ jobs:
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm run test:e2e
 
+  # Lint, the TS Parser's typecheck and the Python type check. Unconditional
+  # (seconds) so it is not threaded through scripts/ci-matrix.ts, whose `app`
+  # regexes don't match parsers/.
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+          cache: pnpm
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-dependency-glob: parsers/python/uv.lock
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run lint
+      - run: pnpm --dir parsers/typescript run typecheck
+      - run: uv run --project parsers/python --frozen ty check parsers/python
+
   e2e-ok:
     if: always()
-    needs: [changes, example, fixtures-python, fixtures-typescript, node, playwright]
+    needs: [changes, checks, example, fixtures-python, fixtures-typescript, node, playwright]
     runs-on: ubuntu-latest
     steps:
       - name: Fail if any selected job failed
