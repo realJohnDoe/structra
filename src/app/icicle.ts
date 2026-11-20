@@ -30,8 +30,6 @@ export interface LayoutContext {
   /** The deepest folder holding every file of the group. */
   folder(group: OptimalGroup): string
   counts: FolderCounts
-  /** Show a group's direct files as Folder Blocks (default); display only, the tree is never changed. */
-  folderBlocks?: boolean
 }
 
 /**
@@ -113,9 +111,8 @@ function sortGroups(groups: OptimalGroup[], parent: OptimalGroup, ctx: Pick<Layo
   )
 }
 
-/** A group's direct files as Folder Blocks, or one bucket per file with Folder Blocks off. */
+/** A group's direct files as Folder Blocks. */
 function folders(owner: OptimalGroup, files: OptimalFile[], ctx: LayoutContext): Folder[] {
-  if (ctx.folderBlocks === false) return files.map((f) => ({ dir: f.file, name: f.file, files: [f], total: 1 }))
   return bucketByFolder(files, ctx.folder(owner), ctx.counts)
 }
 
