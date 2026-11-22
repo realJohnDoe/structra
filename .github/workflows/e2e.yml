@@ -1,6 +1,6 @@
 name: E2E
 
-# Runs on pull requests, on manual dispatch, and (via deploy.yml) on every push
+# Runs on pull requests, on manual dispatch, and (via pages.yml) on every push
 # to main. `e2e-ok` always runs; make it the required status check on main.
 on:
   pull_request:
