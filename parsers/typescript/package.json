@@ -16,11 +16,11 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "dependency-cruiser": "18.8.0",
+    "dependency-cruiser": "18.9.0",
     "typescript": "6.0.3"
   },
   "devDependencies": {
-    "@types/node": "26.6.6",
+    "@types/node": "26.6.10",
     "ajv": "8.20.0",
     "smol-toml": "1.9.1"
   }
